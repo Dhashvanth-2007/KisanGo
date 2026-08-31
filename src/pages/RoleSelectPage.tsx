@@ -142,7 +142,7 @@ export const RoleSelectPage: React.FC<RoleSelectPageProps> = ({
 
       {/* Footer Info */}
       <div className="text-center text-[10px] text-emerald-200/60 max-w-md mx-auto">
-        Kisan Go 2.0 • Built with AI Center Discovery & Concurrency-Safe Slot Allocation
+        Kisan Go 2.0 • Smart AI Agricultural Procurement & Direct Purchase Platform
       </div>
     </div>
   );

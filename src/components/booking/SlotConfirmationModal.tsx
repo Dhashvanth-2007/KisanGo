@@ -62,8 +62,8 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Confirm Your Procurement Slot"
-      subtitle="Verify your multi-crop consignment details before token generation"
+      title={t('confirm_procurement_slot')}
+      subtitle={t('verify_multi_crop_desc')}
       maxWidth="lg"
     >
       <div className="space-y-5">
@@ -88,10 +88,10 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
         <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 space-y-3 text-xs">
           <div className="flex items-center justify-between border-b border-gray-200 pb-2">
             <span className="font-bold text-gray-700 uppercase tracking-wider text-[10px]">
-              Consignment Items ({cropsList.length} {cropsList.length === 1 ? 'Grain' : 'Grains'})
+              {cropsList.length} {t('grains_selected')}
             </span>
             <span className="font-extrabold text-km-primary font-mono text-xs">
-              Total: {totalQuantity.toLocaleString()} kg ({(totalQuantity / 100).toFixed(1)} Qtl)
+              {t('total_weight')}: {totalQuantity.toLocaleString()} kg ({(totalQuantity / 100).toFixed(1)} Qtl)
             </span>
           </div>
 
@@ -110,7 +110,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
                     <span className="font-mono font-bold text-xs text-emerald-950">
                       ₹{subtotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </span>
-                    <span className="text-[10px] text-gray-400 block font-medium">Est. MSP</span>
+                    <span className="text-[10px] text-gray-400 block font-medium">MSP</span>
                   </div>
                 </div>
               );
@@ -118,7 +118,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-gray-200 bg-emerald-50/60 p-2.5 rounded-xl text-emerald-950">
-            <span className="font-bold text-xs">Total Estimated DBT Payout:</span>
+            <span className="font-bold text-xs">{t('estimated_msp_value')}:</span>
             <span className="font-extrabold text-sm font-mono text-km-primary">
               ₹{totalEstimatedMsp.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </span>
@@ -129,10 +129,10 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
         <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100 flex items-center justify-between text-xs">
           <div className="space-y-0.5">
             <span className="text-blue-900 font-bold block text-sm">
-              Slot Time: {slot.start_time} - {slot.end_time}
+              {slot.start_time} - {slot.end_time}
             </span>
             <span className="text-blue-700 font-semibold text-[11px]">
-              Recommended Village Departure: <strong>{slot.recommended_departure || '09:05 AM'}</strong>
+              {t('recommended_departure')}: <strong>{slot.recommended_departure || '09:05 AM'}</strong>
             </span>
           </div>
           <Clock className="w-5 h-5 text-blue-600 shrink-0" />
@@ -142,7 +142,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
         <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white p-4 rounded-2xl border border-emerald-200 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-emerald-950 uppercase tracking-wider text-[10px]">
-              Total Estimated Farmer Time
+              {t('total_estimated_farmer_time')}
             </span>
             <span className="font-extrabold text-km-primary text-sm">
               ~{totalTime} mins ({Math.floor(totalTime / 60)}h {totalTime % 60}m)
@@ -150,15 +150,15 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
           </div>
           <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-100/80 text-center text-[11px]">
             <div>
-              <span className="text-gray-500 block text-[10px]">Travel</span>
+              <span className="text-gray-500 block text-[10px]">{t('travel_label')}</span>
               <span className="font-bold text-km-textPrimary">{travelTime} min</span>
             </div>
             <div>
-              <span className="text-gray-500 block text-[10px]">Wait Queue</span>
+              <span className="text-gray-500 block text-[10px]">{t('wait_queue_label')}</span>
               <span className="font-bold text-km-textPrimary">{waitingTime} min</span>
             </div>
             <div>
-              <span className="text-gray-500 block text-[10px]">Processing</span>
+              <span className="text-gray-500 block text-[10px]">{t('processing_label')}</span>
               <span className="font-bold text-km-textPrimary">{processingTime} min</span>
             </div>
           </div>
@@ -167,7 +167,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
         {/* Guarantees */}
         <div className="flex items-center gap-2 text-xs text-km-textSecondary bg-gray-50 p-2.5 rounded-xl">
           <ShieldCheck className="w-4 h-4 text-km-primary shrink-0" />
-          <span>Priority bay reservation guaranteed with digital token for all grains in this consignment.</span>
+          <span>{t('priority_bay_guarantee')}</span>
         </div>
 
         {/* Actions */}
@@ -177,7 +177,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
             onClick={onClose}
             className="w-1/3 py-3 px-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-km-textPrimary transition-colors"
           >
-            Cancel
+            {t('cancel_btn')}
           </button>
           <button
             type="button"
@@ -186,7 +186,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
             className="flex-1 py-3 px-4 rounded-2xl bg-km-primary hover:bg-km-primaryDark text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-800/25 transition-all disabled:opacity-50"
           >
             {isConfirming ? (
-              <span>Reserving Slot...</span>
+              <span>{t('reserving_slot')}</span>
             ) : (
               <>
                 <span>{t('confirm_slot')}</span>

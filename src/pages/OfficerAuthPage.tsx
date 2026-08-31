@@ -161,7 +161,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
             }`}
           >
             <LogIn className="w-3.5 h-3.5" />
-            <span>Officer Login</span>
+            <span>{t('officer_signin_title')}</span>
           </button>
 
           <button
@@ -174,7 +174,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
             }`}
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>New Officer Register</span>
+            <span>{t('officer_register_title')}</span>
           </button>
         </div>
 
@@ -182,9 +182,9 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
         {authMode === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1">
-              <h2 className="text-xl font-bold text-km-textPrimary">Authorized Officer Sign In</h2>
+              <h2 className="text-xl font-bold text-km-textPrimary">{t('officer_signin_title')}</h2>
               <p className="text-xs text-km-textSecondary">
-                Enter your Officer ID or registered phone number to manage live bay queue
+                {t('officer_signin_desc')}
               </p>
             </div>
 
@@ -223,7 +223,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               disabled={isLoading}
               className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-amber-600/20 transition-all disabled:opacity-50"
             >
-              <span>{isLoading ? 'Authenticating...' : 'Sign In to Center Dashboard'}</span>
+              <span>{isLoading ? '...' : t('sign_in_dashboard')}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -234,14 +234,14 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
                 onClick={() => setAuthMode('register')}
                 className="text-xs font-bold text-amber-700 hover:text-amber-800 hover:underline"
               >
-                Need to register a new Officer profile? Click here
+                {t('officer_register_title')} →
               </button>
             </div>
 
             {/* 1-Click Fast Switch Buttons */}
             <div className="pt-3 border-t border-gray-100 space-y-2">
               <span className="text-[10px] uppercase font-bold text-gray-400 block text-center">
-                ⚡ 1-Click Demo Center Logins
+                ⚡ {t('quick_demo_login')}
               </span>
               <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                 <button
@@ -269,16 +269,16 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
             </div>
           </form>
         ) : (
-          /* MODE 2: REGISTRATION FORM (Like Farmer Details Registration) */
+          /* MODE 2: REGISTRATION FORM */
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300 mb-0.5">
                 <Sparkles className="w-3 h-3 text-amber-600" />
-                <span>New Officer Onboarding</span>
+                <span>{t('officer_register_title')}</span>
               </div>
-              <h2 className="text-xl font-bold text-km-textPrimary">Register Officer Profile</h2>
+              <h2 className="text-xl font-bold text-km-textPrimary">{t('officer_register_title')}</h2>
               <p className="text-xs text-km-textSecondary">
-                Create your official government account to oversee weighing & procurement
+                {t('officer_register_desc')}
               </p>
             </div>
 
@@ -287,7 +287,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-km-textPrimary flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Officer ID / Code</span>
+                  <span>{t('officer_code')}</span>
                 </label>
                 <input
                   type="text"
@@ -302,7 +302,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-km-textPrimary flex items-center gap-1">
                   <User className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Full Name</span>
+                  <span>{t('full_name')}</span>
                 </label>
                 <input
                   type="text"
@@ -320,7 +320,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-km-textPrimary flex items-center gap-1">
                   <Award className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Designation</span>
+                  <span>{t('designation')}</span>
                 </label>
                 <input
                   type="text"
@@ -335,7 +335,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-km-textPrimary flex items-center gap-1">
                   <Phone className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Official Mobile Number</span>
+                  <span>{t('official_mobile')}</span>
                 </label>
                 <input
                   type="tel"
@@ -352,7 +352,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
             <div className="space-y-1">
               <label className="block text-[11px] font-bold text-km-textPrimary flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5 text-amber-600" />
-                <span>Stationed Procurement Center</span>
+                <span>{t('stationed_center')}</span>
               </label>
               <select
                 value={regCenterId}
@@ -381,7 +381,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-km-textPrimary flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Duty Working Hours</span>
+                  <span>{t('duty_hours')}</span>
                 </label>
                 <input
                   type="text"
@@ -396,7 +396,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-km-textPrimary flex items-center gap-1">
                   <Lock className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Access Password</span>
+                  <span>{t('access_password')}</span>
                 </label>
                 <input
                   type="password"
@@ -415,7 +415,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
               className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-700/20 transition-all disabled:opacity-50 pt-2"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{isLoading ? 'Registering...' : 'Register & Launch Officer Station'}</span>
+              <span>{isLoading ? '...' : t('register_launch_station')}</span>
             </button>
 
             <div className="text-center pt-1">
@@ -424,7 +424,7 @@ export const OfficerAuthPage: React.FC<OfficerAuthPageProps> = ({ onBack }) => {
                 onClick={() => setAuthMode('login')}
                 className="text-xs font-bold text-gray-500 hover:text-km-primary hover:underline"
               >
-                Already have an officer account? Back to Login
+                {t('login')} →
               </button>
             </div>
           </form>

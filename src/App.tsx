@@ -6,7 +6,6 @@ import { BottomNav } from './components/layout/BottomNav';
 import { NotificationDrawer } from './components/layout/NotificationDrawer';
 import { VoiceAssistantModal } from './components/voice/VoiceAssistantModal';
 import { ReportProblemModal } from './components/complaint/ReportProblemModal';
-import { ConcurrencySimulatorModal } from './components/booking/ConcurrencySimulatorModal';
 
 import { RoleSelectPage } from './pages/RoleSelectPage';
 import { FarmerAuthPage } from './pages/FarmerAuthPage';
@@ -35,7 +34,6 @@ export const App: React.FC = () => {
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isReportProblemOpen, setIsReportProblemOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
-  const [isConcurrencySimulatorOpen, setIsConcurrencySimulatorOpen] = useState(false);
 
   // App Data
   const [centers, setCenters] = useState<ProcurementCenter[]>([]);
@@ -203,7 +201,6 @@ export const App: React.FC = () => {
             onNavigate={(tab) => setActiveTab(tab as any)}
             onOpenVoiceAssistant={() => setIsVoiceModalOpen(true)}
             onOpenReportProblem={() => setIsReportProblemOpen(true)}
-            onOpenConcurrencySimulator={() => setIsConcurrencySimulatorOpen(true)}
           />
         )}
 
@@ -252,12 +249,6 @@ export const App: React.FC = () => {
       <ReportProblemModal
         isOpen={isReportProblemOpen}
         onClose={() => setIsReportProblemOpen(false)}
-      />
-
-      {/* Concurrency Simulator Modal */}
-      <ConcurrencySimulatorModal
-        isOpen={isConcurrencySimulatorOpen}
-        onClose={() => setIsConcurrencySimulatorOpen(false)}
       />
 
       {/* Notifications Drawer */}

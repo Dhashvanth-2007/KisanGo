@@ -24,7 +24,6 @@ interface FarmerHomePageProps {
   onNavigate: (tab: string) => void;
   onOpenVoiceAssistant: () => void;
   onOpenReportProblem: () => void;
-  onOpenConcurrencySimulator: () => void;
 }
 
 export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
@@ -32,8 +31,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
   recommendedCenter,
   onNavigate,
   onOpenVoiceAssistant,
-  onOpenReportProblem,
-  onOpenConcurrencySimulator
+  onOpenReportProblem
 }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -43,8 +41,8 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-xs text-km-textSecondary font-semibold">Welcome back,</span>
-          <h1 className="text-xl sm:text-2xl font-black text-km-textPrimary">{user?.name || 'Farmer'}</h1>
+          <span className="text-xs text-km-textSecondary font-semibold">{t('welcome_back')}</span>
+          <h1 className="text-xl sm:text-2xl font-black text-km-textPrimary">{user?.name || t('role_farmer')}</h1>
           <p className="text-xs text-km-primary font-medium">📍 {(user as any)?.village || 'Tiruvannamalai Rural'}, {(user as any)?.district || 'Tiruvannamalai'}</p>
         </div>
 
@@ -66,13 +64,13 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
           <div className="space-y-1 max-w-md">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/20 text-amber-200 text-[11px] font-bold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Voice-First AI Assistance in 5 Languages</span>
+              <span>{t('voice_hero_badge')}</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black leading-tight">
               {t('voice_assistant_btn')}
             </h2>
             <p className="text-xs text-emerald-100 leading-snug">
-              Ask in Tamil, Hindi, English, Telugu or Malayalam for center wait times, tokens, and payment status.
+              {t('voice_hero_desc')}
             </p>
           </div>
 
@@ -94,7 +92,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                Active Slot Token
+                {t('active_slot_token')}
               </span>
               <span className="font-mono text-base font-black text-km-primary">{activeBooking.token_number}</span>
             </div>
@@ -105,27 +103,27 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100">
-              <span className="text-gray-400 block font-semibold text-[10px]">Center</span>
+              <span className="text-gray-400 block font-semibold text-[10px]">{t('procurement_center')}</span>
               <span className="font-bold text-km-textPrimary block truncate">{activeBooking.center_name}</span>
               <span className="text-gray-500">{activeBooking.slot_start} - {activeBooking.slot_end}</span>
             </div>
 
             <div className="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-100">
-              <span className="text-emerald-800 block font-semibold text-[10px]">Queue Position</span>
+              <span className="text-emerald-800 block font-semibold text-[10px]">{t('current_queue')}</span>
               <span className="font-black text-lg text-emerald-950">
                 #{activeBooking.live_queue_position || activeBooking.original_queue_pos || 1}
               </span>
               <span className="text-emerald-700 block font-medium">
-                {Math.max(0, (activeBooking.live_queue_position || 1) - 1)} vehicles ahead
+                {Math.max(0, (activeBooking.live_queue_position || 1) - 1)} {t('vehicles_ahead')}
               </span>
             </div>
 
             <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-100">
-              <span className="text-blue-800 block font-semibold text-[10px]">Recommended Departure</span>
+              <span className="text-blue-800 block font-semibold text-[10px]">{t('recommended_departure')}</span>
               <span className="font-black text-lg text-blue-950 font-mono">
                 {activeBooking.recommended_departure_time || '09:05 AM'}
               </span>
-              <span className="text-blue-700 block font-medium">GPS dynamic routing</span>
+              <span className="text-blue-700 block font-medium">{t('gps_dynamic_routing')}</span>
             </div>
           </div>
 
@@ -133,7 +131,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
             onClick={() => onNavigate('my-slot')}
             className="w-full py-3 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-800/20 transition-all"
           >
-            <span>View Digital Token & Live Queue</span>
+            <span>{t('view_token_queue')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -146,7 +144,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider">
                 <Sparkles className="w-3 h-3" />
-                AI Recommended Center
+                {t('ai_recommended_badge')}
               </span>
             </div>
             <RatingStars rating={recommendedCenter.rating} size="sm" />
@@ -174,15 +172,15 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="bg-gray-50 rounded-2xl py-2">
               <span className="block font-bold text-km-textPrimary">{recommendedCenter.distance}</span>
-              <span className="text-[10px] text-km-textSecondary">Distance</span>
+              <span className="text-[10px] text-km-textSecondary">{t('distance')}</span>
             </div>
             <div className="bg-emerald-50 rounded-2xl py-2">
               <span className="block font-bold text-emerald-800">{recommendedCenter.waiting_time}</span>
-              <span className="text-[10px] text-emerald-600">Est. Wait</span>
+              <span className="text-[10px] text-emerald-600">{t('waiting_time')}</span>
             </div>
             <div className="bg-blue-50 rounded-2xl py-2">
               <span className="block font-bold text-blue-800">{recommendedCenter.available_slots}</span>
-              <span className="text-[10px] text-blue-600">Open Slots</span>
+              <span className="text-[10px] text-blue-600">{t('available_slots')}</span>
             </div>
           </div>
 
@@ -190,7 +188,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
             onClick={() => onNavigate('find-center')}
             className="w-full py-3 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-800/20 transition-all"
           >
-            <span>View & Book This Center</span>
+            <span>{t('view_book_btn')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -201,14 +199,14 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
         <div className="space-y-1">
           <h3 className="font-black text-lg text-km-textPrimary">{t('find_center')}</h3>
           <p className="text-xs text-km-textSecondary leading-relaxed">
-            Compare real-time queues, travel distances, available slots, and AI recommendations to minimize waiting time.
+            {t('find_centers_desc')}
           </p>
         </div>
         <button
           onClick={() => onNavigate('find-center')}
           className="px-6 py-3.5 rounded-2xl bg-km-primary hover:bg-km-primaryDark text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-800/20 transition-all transform hover:scale-105 active:scale-95 shrink-0"
         >
-          <span>Find Procurement Center</span>
+          <span>{t('find_center_btn')}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -223,7 +221,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
             <MapPin className="w-5 h-5" />
           </div>
           <span className="font-bold text-xs text-km-textPrimary block">{t('find_center')}</span>
-          <span className="text-[10px] text-km-textSecondary">Map & comparison</span>
+          <span className="text-[10px] text-km-textSecondary">{t('map_and_comparison')}</span>
         </button>
 
         <button
@@ -234,7 +232,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
             <Ticket className="w-5 h-5" />
           </div>
           <span className="font-bold text-xs text-km-textPrimary block">{t('my_slot')}</span>
-          <span className="text-[10px] text-km-textSecondary">Token & departure</span>
+          <span className="text-[10px] text-km-textSecondary">{t('token_and_departure')}</span>
         </button>
 
         <button
@@ -245,7 +243,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
             <Activity className="w-5 h-5" />
           </div>
           <span className="font-bold text-xs text-km-textPrimary block">{t('live_queue')}</span>
-          <span className="text-[10px] text-km-textSecondary">Real-time status</span>
+          <span className="text-[10px] text-km-textSecondary">{t('realtime_status')}</span>
         </button>
 
         <button
@@ -256,26 +254,7 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
             <ShieldAlert className="w-5 h-5" />
           </div>
           <span className="font-bold text-xs text-km-textPrimary block">{t('report_problem')}</span>
-          <span className="text-[10px] text-km-textSecondary">1-minute complaint</span>
-        </button>
-      </div>
-
-      {/* Interactive Concurrency Simulation Tester Banner */}
-      <div className="bg-slate-900 text-white rounded-3xl p-5 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold">
-            <ShieldCheck className="w-4 h-4" />
-            <span>High-Concurrency System Verification</span>
-          </div>
-          <p className="text-xs text-slate-300">
-            Simulate 25 farmers simultaneously reserving slots against limited capacity to verify database isolation and zero-overbooking.
-          </p>
-        </div>
-        <button
-          onClick={onOpenConcurrencySimulator}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition-colors shrink-0"
-        >
-          {t('concurrency_test_btn')}
+          <span className="text-[10px] text-km-textSecondary">{t('one_min_complaint')}</span>
         </button>
       </div>
     </div>

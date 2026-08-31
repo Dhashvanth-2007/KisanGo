@@ -317,7 +317,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
                   disabled={selectedCrops.length === 0}
                   className="w-full py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md transition-colors disabled:opacity-50"
                 >
-                  <span>Proceed to Available Time Slots ({selectedCrops.length} {selectedCrops.length === 1 ? 'Grain' : 'Grains'})</span>
+                  <span>{t('proceed_to_slots')} ({selectedCrops.length} {t('grains_selected')})</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -339,7 +339,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
                     onClick={() => setBookingStep('crop_qty')}
                     className="w-1/3 py-3 border border-gray-200 rounded-2xl text-xs font-bold text-gray-600 hover:bg-gray-50"
                   >
-                    Back to Crops
+                    {t('back_to_crops')}
                   </button>
                   <button
                     type="button"
@@ -347,7 +347,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
                     onClick={() => setIsConfirmationOpen(true)}
                     className="flex-1 py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
                   >
-                    <span>Review & Confirm Booking</span>
+                    <span>{t('review_confirm_booking')}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

@@ -73,13 +73,13 @@ export const CropQuantityForm: React.FC<CropQuantityFormProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-km-textPrimary">Crop & Quantity Consignment</h3>
+              <h3 className="font-bold text-sm text-km-textPrimary">{t('crop_consignment_title')}</h3>
               <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                Multi-Product Supported
+                {t('multi_product_supported')}
               </span>
             </div>
             <p className="text-[11px] text-km-textSecondary">
-              Select one or multiple grains to sell in this single booking slot
+              {t('crop_consignment_subtitle')}
             </p>
           </div>
         </div>
@@ -88,9 +88,9 @@ export const CropQuantityForm: React.FC<CropQuantityFormProps> = ({
       {/* Select Available Crops / Grains Multi-Selector */}
       <div className="space-y-2">
         <label className="block text-xs font-bold text-km-textPrimary flex items-center justify-between">
-          <span>Select Grains to Sell (Click to Add / Remove):</span>
+          <span>{t('select_grains_to_sell')}</span>
           <span className="text-[11px] text-emerald-700 font-semibold">
-            {selectedCrops.length} {selectedCrops.length === 1 ? 'Grain' : 'Grains'} Selected
+            {selectedCrops.length} {t('grains_selected')}
           </span>
         </label>
 
@@ -131,7 +131,7 @@ export const CropQuantityForm: React.FC<CropQuantityFormProps> = ({
       {/* Individual Quantity Adjustments for each selected crop */}
       <div className="space-y-3 pt-2 border-t border-gray-100">
         <label className="block text-xs font-bold text-km-textPrimary">
-          Specify Quantities for Selected Grains:
+          {t('specify_quantities')}
         </label>
 
         <div className="space-y-3">
@@ -216,16 +216,16 @@ export const CropQuantityForm: React.FC<CropQuantityFormProps> = ({
       <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-white border border-emerald-200 space-y-2.5">
         <div className="flex items-center justify-between text-xs pb-1 border-b border-emerald-100">
           <span className="font-bold text-emerald-900 uppercase tracking-wider text-[10px]">
-            Combined Consignment Total
+            {t('combined_consignment_total')}
           </span>
           <span className="text-[11px] font-bold text-emerald-800">
-            {selectedCrops.length} {selectedCrops.length === 1 ? 'Crop' : 'Crops Included'}
+            {selectedCrops.length} {t('grains_selected')}
           </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
           <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
-            <span className="text-[10px] text-gray-500 block">Total Weight</span>
+            <span className="text-[10px] text-gray-500 block">{t('total_weight')}</span>
             <span className="font-extrabold text-km-primary text-sm font-mono">
               {totalQuantity.toLocaleString()} kg
             </span>
@@ -235,23 +235,23 @@ export const CropQuantityForm: React.FC<CropQuantityFormProps> = ({
           </div>
 
           <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
-            <span className="text-[10px] text-gray-500 block">Estimated MSP Value</span>
+            <span className="text-[10px] text-gray-500 block">{t('estimated_msp_value')}</span>
             <span className="font-extrabold text-emerald-950 text-sm font-mono">
               ₹{totalEstimatedMspValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </span>
             <span className="text-[10px] text-emerald-600 block font-medium">
-              Direct DBT Payout
+              {t('direct_dbt_payout')}
             </span>
           </div>
 
           <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 col-span-2 sm:col-span-1">
-            <span className="text-[10px] text-gray-500 block">Est. Processing</span>
+            <span className="text-[10px] text-gray-500 block">{t('estimated_processing_time')}</span>
             <span className="font-extrabold text-blue-900 text-sm flex items-center gap-1 font-mono">
               <Clock className="w-3.5 h-3.5 text-blue-600" />
               ~{estimatedProcessingMins} mins
             </span>
             <span className="text-[10px] text-gray-400 block">
-              Weighbridge & Testing
+              {t('processing_label')}
             </span>
           </div>
         </div>

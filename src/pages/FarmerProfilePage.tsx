@@ -229,49 +229,49 @@ export const FarmerProfilePage: React.FC<FarmerProfilePageProps> = ({ onNavigate
         <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-2xs space-y-1">
           <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
             <DollarSign className="w-3.5 h-3.5 text-km-primary" />
-            Total DBT Credited
+            {t('total_dbt_credited')}
           </span>
           <div className="text-xl sm:text-2xl font-black text-km-primary font-mono">
             ₹{totalAmountReceived.toLocaleString('en-IN')}
           </div>
           <span className="text-[10px] text-emerald-700 font-semibold block">
-            ✓ Direct Bank Transfer
+            ✓ {t('direct_dbt_payout')}
           </span>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-2xs space-y-1">
           <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
             <Scale className="w-3.5 h-3.5 text-amber-600" />
-            Total Grain Sold
+            {t('total_grain_sold')}
           </span>
           <div className="text-xl sm:text-2xl font-black text-amber-900 font-mono">
             {(totalQuantityKg / 100).toFixed(1)} Qtl
           </div>
           <span className="text-[10px] text-gray-400">
-            {totalQuantityKg.toLocaleString()} kg procured
+            {totalQuantityKg.toLocaleString()} kg
           </span>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-blue-100 shadow-2xs space-y-1">
           <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
             <FileText className="w-3.5 h-3.5 text-blue-600" />
-            Verified Bills
+            {t('verified_bills')}
           </span>
           <div className="text-xl sm:text-2xl font-black text-blue-900 font-mono">
             {payments.length}
           </div>
-          <span className="text-[10px] text-blue-600 font-medium">Official Receipts</span>
+          <span className="text-[10px] text-blue-600 font-medium">Receipts</span>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-purple-100 shadow-2xs space-y-1">
           <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
             <Layers className="w-3.5 h-3.5 text-purple-600" />
-            Land Holding
+            {t('land_area')}
           </span>
           <div className="text-xl sm:text-2xl font-black text-purple-950 font-mono">
             {landHolding} Acres
           </div>
-          <span className="text-[10px] text-purple-700">Paddy Registered</span>
+          <span className="text-[10px] text-purple-700">Registered</span>
         </div>
       </div>
 
@@ -287,7 +287,7 @@ export const FarmerProfilePage: React.FC<FarmerProfilePageProps> = ({ onNavigate
           }`}
         >
           <User className="w-4 h-4" />
-          <span>Farmer Details & Location</span>
+          <span>{t('farmer_details')}</span>
         </button>
         <button
           type="button"
@@ -299,7 +299,7 @@ export const FarmerProfilePage: React.FC<FarmerProfilePageProps> = ({ onNavigate
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Billing & DBT Payment History ({payments.length})</span>
+          <span>{t('billing_dbt_history')} ({payments.length})</span>
         </button>
       </div>
 
@@ -507,7 +507,7 @@ export const FarmerProfilePage: React.FC<FarmerProfilePageProps> = ({ onNavigate
               className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-km-primary hover:bg-km-primaryDark text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-700/20 transition-all disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>{isSaving ? 'Saving Changes...' : 'Save Farmer Profile'}</span>
+              <span>{isSaving ? '...' : t('save_profile')}</span>
             </button>
           </div>
         </form>
