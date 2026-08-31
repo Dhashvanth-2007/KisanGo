@@ -1,18 +1,29 @@
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { CREATE_TABLES_SQL } from './schema.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let dbFilePath: string = '';
 
-const dbDir = path.resolve(__dirname, '../../data');
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+try {
+  const isVercel = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+  if (isVercel) {
+    dbFilePath = path.join(os.tmpdir(), 'kisan_go.sqlite');
+  } else {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const dbDir = path.resolve(__dirname, '../../data');
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    dbFilePath = path.resolve(dbDir, 'kisan_mitra.sqlite');
+  }
+} catch (e) {
+  // Fallback to tmp dir
+  dbFilePath = path.join(os.tmpdir(), 'kisan_go.sqlite');
 }
-
-const dbFilePath = path.resolve(dbDir, 'kisan_mitra.sqlite');
 
 let sqlJsInstance: any = null;
 let rawDb: SqlJsDatabase | null = null;
@@ -25,10 +36,15 @@ export async function getDb(): Promise<SqlJsDatabase> {
     sqlJsInstance = await initSqlJs();
   }
 
-  if (fs.existsSync(dbFilePath)) {
-    const fileBuffer = fs.readFileSync(dbFilePath);
-    rawDb = new sqlJsInstance.Database(fileBuffer);
-  } else {
+  try {
+    if (dbFilePath && fs.existsSync(dbFilePath)) {
+      const fileBuffer = fs.readFileSync(dbFilePath);
+      rawDb = new sqlJsInstance.Database(fileBuffer);
+    } else {
+      rawDb = new sqlJsInstance.Database();
+    }
+  } catch (err) {
+    console.warn('Fallback to in-memory database:', err);
     rawDb = new sqlJsInstance.Database();
   }
 
@@ -38,13 +54,13 @@ export async function getDb(): Promise<SqlJsDatabase> {
 // Throttled / Debounced DB file saving
 let saveTimeout: any = null;
 export function saveDbToFile() {
-  if (rawDb) {
+  if (rawDb && dbFilePath) {
     try {
       const data = rawDb.export();
       const buffer = Buffer.from(data);
       fs.writeFileSync(dbFilePath, buffer);
     } catch (e) {
-      console.error('Error saving DB to file:', e);
+      // If filesystem write fails on serverless, in-memory state remains intact
     }
   }
 }
@@ -144,7 +160,7 @@ export const db = {
           try {
             rawDb.exec('ROLLBACK;');
           } catch (rollbackErr) {
-            // Ignore rollback failure to preserve original error
+            // Ignore rollback failure
           }
         }
         throw err;

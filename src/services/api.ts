@@ -2,6 +2,22 @@ import { ProcurementCenter, Slot, Booking, Complaint, FarmerPayment } from '../t
 
 const BASE_URL = '/api';
 
+async function handleResponse(res: Response) {
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return res.json();
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    if (!res.ok) {
+      throw new Error(`Server returned status ${res.status}: ${text.slice(0, 120)}`);
+    }
+    return { success: false, message: text || 'Invalid response from server' };
+  }
+}
+
 export const api = {
   // Authentication
   async sendFarmerOTP(mobile: string) {
@@ -10,7 +26,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mobile })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async verifyFarmerOTP(payload: {
@@ -29,7 +45,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async officerLogin(officerId: string, password: string) {
@@ -38,7 +54,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ officerId, password })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async updateFarmerProfile(payload: {
@@ -57,7 +73,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async updateOfficerProfile(payload: {
@@ -73,18 +89,18 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   // Centers & Discovery
   async getCenters(lat: number = 12.2253, lng: number = 79.0747): Promise<{ success: boolean; data: ProcurementCenter[] }> {
     const res = await fetch(`${BASE_URL}/centers?lat=${lat}&lng=${lng}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async getCenterById(id: string, lat: number = 12.2253, lng: number = 79.0747): Promise<{ success: boolean; data: ProcurementCenter }> {
     const res = await fetch(`${BASE_URL}/centers/${id}?lat=${lat}&lng=${lng}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async addCenterReview(centerId: string, reviewData: any) {
@@ -93,7 +109,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reviewData)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   // AI Recommendation
@@ -103,7 +119,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lng, quantity })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async queryVoiceAI(query: string, language: string, farmerId?: string) {
@@ -112,7 +128,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, language, farmerId })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   // Slots & Booking
@@ -124,7 +140,7 @@ export const api = {
     if (lng) query.append('lng', lng.toString());
 
     const res = await fetch(`${BASE_URL}/centers/${centerId}/slots?${query.toString()}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async bookSlot(payload: {
@@ -141,26 +157,26 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async getFarmerActiveBooking(farmerId: string): Promise<{ success: boolean; data: Booking | null }> {
     const res = await fetch(`${BASE_URL}/bookings/active/${farmerId}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async cancelBooking(bookingId: string) {
     const res = await fetch(`${BASE_URL}/bookings/${bookingId}/cancel`, {
       method: 'POST'
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   // Live Queue
   async getLiveQueue(centerId: string, bookingId?: string) {
     const query = bookingId ? `?bookingId=${bookingId}` : '';
     const res = await fetch(`${BASE_URL}/centers/${centerId}/queue${query}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async updateQueueStatus(queueId: string, status: string) {
@@ -169,13 +185,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   // Officer Dashboard & Procurement
   async getOfficerDashboard(centerId: string) {
     const res = await fetch(`${BASE_URL}/officer/dashboard/${centerId}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async verifyFarmer(bookingId: string) {
@@ -184,7 +200,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bookingId })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async recordProcurement(payload: {
@@ -201,7 +217,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async markPaymentComplete(billId: string) {
@@ -210,7 +226,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ billId })
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async updateCenterSettings(centerId: string, settings: any) {
@@ -219,13 +235,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   // Farmer Payments & DBT
   async getFarmerPayments(farmerId: string): Promise<{ success: boolean; data: FarmerPayment[] }> {
     const res = await fetch(`${BASE_URL}/payments/farmer/${farmerId}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   // Complaints
@@ -241,18 +257,18 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return handleResponse(res);
   },
 
   async getFarmerComplaints(farmerId: string): Promise<{ success: boolean; data: Complaint[] }> {
     const res = await fetch(`${BASE_URL}/complaints/farmer/${farmerId}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async getAllComplaints(centerId?: string): Promise<{ success: boolean; data: Complaint[] }> {
     const query = centerId ? `?centerId=${centerId}` : '';
     const res = await fetch(`${BASE_URL}/complaints${query}`);
-    return res.json();
+    return handleResponse(res);
   },
 
   async resolveComplaint(id: string, status: string, resolution: string) {
@@ -261,6 +277,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, resolution })
     });
-    return res.json();
+    return handleResponse(res);
   }
 };
