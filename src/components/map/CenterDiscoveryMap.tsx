@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { ProcurementCenter } from '../../types';
 import { MapPin, Navigation, Sparkles, Clock, Users, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 import L from 'leaflet';
 
 interface CenterDiscoveryMapProps {
@@ -22,6 +23,7 @@ export const CenterDiscoveryMap: React.FC<CenterDiscoveryMapProps> = ({
   farmerLat = 12.2253,
   farmerLng = 79.0747
 }) => {
+  const { t } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
@@ -74,7 +76,7 @@ export const CenterDiscoveryMap: React.FC<CenterDiscoveryMapProps> = ({
     const farmerMarker = L.marker([farmerLat, farmerLng], { icon: farmerIcon })
       .bindPopup(`
         <div class="p-2 text-center">
-          <p class="font-bold text-xs text-blue-900">Your Location</p>
+          <p class="font-bold text-xs text-blue-900">${t('your_location')}</p>
           <p class="text-[10px] text-gray-500">Vengikkal, Tiruvannamalai</p>
         </div>
       `)
@@ -126,7 +128,7 @@ export const CenterDiscoveryMap: React.FC<CenterDiscoveryMapProps> = ({
     // Auto-fit bounds
     const group = L.featureGroup(Object.values(markersRef.current));
     map.fitBounds(group.getBounds().pad(0.2));
-  }, [centers, selectedCenter, farmerLat, farmerLng]);
+  }, [centers, selectedCenter, farmerLat, farmerLng, t]);
 
   return (
     <div className="relative w-full h-[360px] sm:h-[420px] rounded-3xl overflow-hidden border border-emerald-100 shadow-km-md bg-gray-100">
@@ -137,15 +139,15 @@ export const CenterDiscoveryMap: React.FC<CenterDiscoveryMapProps> = ({
       <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-md border border-gray-100 text-[11px] font-medium text-km-textPrimary space-y-1">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200"></span>
-          <span>Low Wait & High Slots</span>
+          <span>{t('map_legend_low_wait')}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-200"></span>
-          <span>Moderate / Busy</span>
+          <span>{t('map_legend_moderate')}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200"></span>
-          <span>High Waiting / Full</span>
+          <span>{t('map_legend_high_wait')}</span>
         </div>
       </div>
 
@@ -156,7 +158,7 @@ export const CenterDiscoveryMap: React.FC<CenterDiscoveryMapProps> = ({
             <div>
               {selectedCenter.ai_recommended && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full mb-1.5">
-                  <Sparkles className="w-3 h-3 text-amber-600" /> AI Optimal Choice
+                  <Sparkles className="w-3 h-3 text-amber-600" /> {t('optimal_choice')}
                 </span>
               )}
               <h4 className="font-bold text-sm text-km-textPrimary leading-tight">{selectedCenter.name}</h4>
@@ -170,16 +172,16 @@ export const CenterDiscoveryMap: React.FC<CenterDiscoveryMapProps> = ({
 
           <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100 text-center text-xs">
             <div className="bg-emerald-50/80 p-1.5 rounded-xl">
-              <span className="text-[10px] text-gray-500 block">Queue</span>
-              <span className="font-bold text-emerald-900">{selectedCenter.queue} Vehicles</span>
+              <span className="text-[10px] text-gray-500 block">{t('current_queue')}</span>
+              <span className="font-bold text-emerald-900">{selectedCenter.queue} {t('vehicles_label')}</span>
             </div>
             <div className="bg-blue-50/80 p-1.5 rounded-xl">
-              <span className="text-[10px] text-gray-500 block">Wait Time</span>
+              <span className="text-[10px] text-gray-500 block">{t('waiting_time')}</span>
               <span className="font-bold text-blue-900">{selectedCenter.waiting_time}</span>
             </div>
             <div className="bg-amber-50/80 p-1.5 rounded-xl">
-              <span className="text-[10px] text-gray-500 block">Slots Open</span>
-              <span className="font-bold text-amber-900">{selectedCenter.available_slots} Slots</span>
+              <span className="text-[10px] text-gray-500 block">{t('available_slots')}</span>
+              <span className="font-bold text-amber-900">{selectedCenter.available_slots} {t('slots_label')}</span>
             </div>
           </div>
 
@@ -188,13 +190,13 @@ export const CenterDiscoveryMap: React.FC<CenterDiscoveryMapProps> = ({
               onClick={() => onViewProfile(selectedCenter)}
               className="flex-1 py-2 px-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-km-textPrimary transition-colors"
             >
-              Full Profile
+              {t('full_profile')}
             </button>
             <button
               onClick={() => onBookSlot(selectedCenter)}
               className="flex-1 py-2 px-3 rounded-xl bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-800/20 transition-colors"
             >
-              <span>Book Slot</span>
+              <span>{t('book_slot')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

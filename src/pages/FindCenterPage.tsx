@@ -184,7 +184,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
               }`}
             >
               <MapPin className="w-3.5 h-3.5" />
-              <span>Map</span>
+              <span>{t('map_view')}</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -193,7 +193,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
               }`}
             >
               <List className="w-3.5 h-3.5" />
-              <span>Cards</span>
+              <span>{t('cards_view')}</span>
             </button>
           </div>
         </div>
@@ -202,7 +202,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
       {/* Filter Chips Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
         <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px] pl-1 mr-1 flex items-center gap-1">
-          <Filter className="w-3 h-3" /> Filters:
+          <Filter className="w-3 h-3" /> {t('filters_label')}:
         </span>
         {[
           { id: 'all', label: t('all_filters') },

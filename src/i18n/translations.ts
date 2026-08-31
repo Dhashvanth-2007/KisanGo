@@ -173,7 +173,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     vehicles_label: 'Vehicles',
     slots_label: 'Slots',
     saves_time_badge: 'Saves ~45 mins',
-    compare_checkbox: 'Compare'
+    compare_checkbox: 'Compare',
+    map_legend_low_wait: 'Low Wait & High Slots',
+    map_legend_moderate: 'Moderate / Busy',
+    map_legend_high_wait: 'High Waiting / Full',
+    map_view: 'Map',
+    cards_view: 'Cards',
+    filters_label: 'Filters',
+    your_location: 'Your Location',
+    full_profile: 'Full Profile'
   },
 
   Tamil: {
@@ -348,7 +356,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     vehicles_label: 'வாகனங்கள்',
     slots_label: 'இடங்கள்',
     saves_time_badge: '~45 நிமிடம் சேமிக்கிறது',
-    compare_checkbox: 'ஒப்பிடுக'
+    compare_checkbox: 'ஒப்பிடுக',
+    map_legend_low_wait: 'குறைந்த காத்திருப்பு & அதிக இடங்கள்',
+    map_legend_moderate: 'மிதமான நெரிசல்',
+    map_legend_high_wait: 'அதிக காத்திருப்பு / நிரம்பியது',
+    map_view: 'வரைபடம்',
+    cards_view: 'கார்டுகள்',
+    filters_label: 'வடிகட்டிகள்',
+    your_location: 'உங்கள் இருப்பிடம்',
+    full_profile: 'முழு விவரம்'
   },
 
   Hindi: {
@@ -523,7 +539,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     vehicles_label: 'वाहन',
     slots_label: 'स्लॉट',
     saves_time_badge: '~45 मिनट बचाता है',
-    compare_checkbox: 'तुलना करें'
+    compare_checkbox: 'तुलना करें',
+    map_legend_low_wait: 'कम प्रतीक्षा और अधिक स्लॉट',
+    map_legend_moderate: 'मध्यम / व्यस्त',
+    map_legend_high_wait: 'अधिक प्रतीक्षा / भरा हुआ',
+    map_view: 'मानचित्र',
+    cards_view: 'कार्ड्स',
+    filters_label: 'फ़िल्टर',
+    your_location: 'आपका स्थान',
+    full_profile: 'पूरी प्रोफ़ाइल'
   },
 
   Telugu: {
@@ -698,7 +722,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     vehicles_label: 'వాహనాలు',
     slots_label: 'స్లాట్‌లు',
     saves_time_badge: '~45 నిమిషాలు ఆదా చేస్తుంది',
-    compare_checkbox: 'పోల్చండి'
+    compare_checkbox: 'పోల్చండి',
+    map_legend_low_wait: 'తక్కువ నిరీక్షణ & ఎక్కువ స్లాట్లు',
+    map_legend_moderate: 'మితమైన రద్దీ',
+    map_legend_high_wait: 'ఎక్కువ నిరీక్షణ / నిండింది',
+    map_view: 'మ్యాప్',
+    cards_view: 'కార్డులు',
+    filters_label: 'ఫిల్టర్లు',
+    your_location: 'మీ స్థానం',
+    full_profile: 'పూర్తి ప్రొఫైల్'
   },
 
   Malayalam: {
@@ -873,6 +905,14 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     vehicles_label: 'വാഹനങ്ങൾ',
     slots_label: 'സ്ലോട്ടുകൾ',
     saves_time_badge: '~45 മിനിറ്റ് ലാഭിക്കാം',
-    compare_checkbox: 'താരതമ്യം'
+    compare_checkbox: 'താരതമ്യം',
+    map_legend_low_wait: 'കുറഞ്ഞ കാത്തിരിപ്പും കൂടുതൽ സ്ലോട്ടുകളും',
+    map_legend_moderate: 'മിതമായ തിരക്ക്',
+    map_legend_high_wait: 'കൂടിയ കാത്തിരിപ്പ് / പൂർണ്ണമായി',
+    map_view: 'മാപ്പ്',
+    cards_view: 'കാർഡുകൾ',
+    filters_label: 'ഫിൽട്ടറുകൾ',
+    your_location: 'നിങ്ങളുടെ സ്ഥാനം',
+    full_profile: 'പൂർണ്ണ വിവരങ്ങൾ'
   }
 };
