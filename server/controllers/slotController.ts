@@ -117,10 +117,20 @@ export const getCenterSlots = (req: Request, res: Response): void => {
 // Transactional Slot Booking
 export const bookSlot = (req: Request, res: Response): void => {
   try {
-    const { farmerId, centerId, slotId, cropId, expectedQuantity, lat, lng } = req.body;
+    const { farmerId, centerId, slotId, cropId, expectedQuantity, crops, lat, lng } = req.body;
 
-    if (!farmerId || !centerId || !slotId || !cropId || !expectedQuantity) {
-      res.status(400).json({ success: false, message: 'All booking fields are required' });
+    let computedQuantity = expectedQuantity;
+    let targetCropId = cropId;
+    let cropsBreakdownJson: string | null = null;
+
+    if (Array.isArray(crops) && crops.length > 0) {
+      computedQuantity = crops.reduce((sum: number, c: any) => sum + (Number(c.expectedQuantity) || 0), 0);
+      targetCropId = crops[0].cropId || cropId;
+      cropsBreakdownJson = JSON.stringify(crops);
+    }
+
+    if (!farmerId || !centerId || !slotId || !targetCropId || !computedQuantity) {
+      res.status(400).json({ success: false, message: 'All booking fields and at least one crop are required' });
       return;
     }
 
@@ -153,8 +163,7 @@ export const bookSlot = (req: Request, res: Response): void => {
     }
 
     // Ensure crop exists in DB
-    let targetCropId = cropId;
-    const existingCrop = db.prepare('SELECT * FROM crops WHERE id = ?').get(cropId) as any;
+    const existingCrop = db.prepare('SELECT * FROM crops WHERE id = ?').get(targetCropId) as any;
     if (!existingCrop) {
       const centerCrop = db.prepare('SELECT * FROM crops WHERE center_id = ? LIMIT 1').get(centerId) as any;
       if (centerCrop) {
@@ -170,7 +179,7 @@ export const bookSlot = (req: Request, res: Response): void => {
 
     const distance = calculateDistance(farmerLat, farmerLng, center.latitude, center.longitude);
     const travelTime = estimateTravelTime(distance);
-    const processingMins = Math.round(15 + Math.max(0, (expectedQuantity - 1000) / 1000) * 5);
+    const processingMins = Math.round(15 + Math.max(0, (computedQuantity - 1000) / 1000) * 5);
 
     // Run ACID transaction for atomic reservation
     const bookingResult = db.transaction(() => {
@@ -245,21 +254,22 @@ export const bookSlot = (req: Request, res: Response): void => {
       db.prepare(`
         INSERT INTO bookings (
           id, farmer_id, center_id, slot_id, crop_id, expected_quantity, 
-          priority_score, estimated_processing_mins, estimated_waiting_mins, travel_time_mins, status
+          priority_score, estimated_processing_mins, estimated_waiting_mins, travel_time_mins, status, crops_breakdown
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         bookingId,
         farmerId,
         centerId,
         targetSlot.id,
         targetCropId,
-        expectedQuantity,
+        computedQuantity,
         92.0,
         processingMins,
         estimatedWaitMins,
         travelTime,
-        'Slot Booked'
+        'Slot Booked',
+        cropsBreakdownJson
       );
 
       // 7. Create Digital Token record
@@ -367,10 +377,41 @@ export const getFarmerActiveBooking = (req: Request, res: Response): void => {
     // Calculate farmers before farmer
     const farmersBefore = Math.max(0, (booking.live_queue_position || booking.original_queue_pos || 1) - 1);
 
+    // Parse multi-crop breakdown if available
+    let cropsList: any[] = [];
+    if (booking.crops_breakdown) {
+      try {
+        cropsList = JSON.parse(booking.crops_breakdown);
+      } catch (e) {}
+    }
+
+    if (cropsList.length === 0 && booking.crop_name) {
+      cropsList = [
+        {
+          cropId: booking.crop_id,
+          cropName: booking.crop_name,
+          expectedQuantity: booking.expected_quantity,
+          mspRate: booking.msp_rate || 23.0
+        }
+      ];
+    }
+
+    const cropsSummary = cropsList
+      .map((c: any) => `${c.cropName} (${(c.expectedQuantity || 0).toLocaleString()} kg)`)
+      .join(', ');
+
+    const totalEstimatedValue = cropsList.reduce(
+      (sum: number, c: any) => sum + (c.expectedQuantity || 0) * (c.mspRate || 0),
+      0
+    );
+
     res.json({
       success: true,
       data: {
         ...booking,
+        crops: cropsList,
+        crops_summary: cropsSummary,
+        total_estimated_value: totalEstimatedValue,
         photos,
         photo: photos[0]?.image_url || 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=1200&q=80',
         farmers_before: farmersBefore

@@ -60,16 +60,34 @@ export const DigitalTokenCard: React.FC<DigitalTokenCardProps> = ({
           </div>
 
           {/* Slot & Consignment */}
-          <div className="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-100 space-y-1">
-            <span className="text-gray-400 font-semibold text-[10px] uppercase block">Slot & Commodity</span>
+          <div className="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-100 space-y-1.5">
+            <span className="text-gray-400 font-semibold text-[10px] uppercase block">Slot & Consignment</span>
             <div className="flex items-center gap-1.5 font-bold text-km-textPrimary text-sm">
               <Calendar className="w-3.5 h-3.5 text-km-primary" />
               <span>{booking.slot_start} - {booking.slot_end}</span>
             </div>
-            <p className="text-xs text-km-primary font-bold flex items-center gap-1">
-              <Wheat className="w-3.5 h-3.5 text-amber-600" />
-              <span>{booking.crop_name} • {booking.expected_quantity?.toLocaleString()} kg</span>
-            </p>
+
+            {/* If multi-crop */}
+            {booking.crops && booking.crops.length > 0 ? (
+              <div className="space-y-1 pt-1 border-t border-gray-200/60">
+                {booking.crops.map((c, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-km-textPrimary flex items-center gap-1">
+                      <Wheat className="w-3 h-3 text-amber-600 shrink-0" />
+                      <span>{c.cropName}</span>
+                    </span>
+                    <span className="font-mono font-bold text-km-primary">
+                      {c.expectedQuantity.toLocaleString()} kg
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-km-primary font-bold flex items-center gap-1">
+                <Wheat className="w-3.5 h-3.5 text-amber-600" />
+                <span>{booking.crop_name} • {booking.expected_quantity?.toLocaleString()} kg</span>
+              </p>
+            )}
           </div>
         </div>
 

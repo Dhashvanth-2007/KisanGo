@@ -1,131 +1,260 @@
 import React from 'react';
-import { Crop } from '../../types';
-import { Wheat, Scale, Clock, Sparkles } from 'lucide-react';
+import { Crop, SelectedCropItem } from '../../types';
+import { Wheat, Scale, Clock, Sparkles, Plus, Trash2, CheckCircle2, DollarSign } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface CropQuantityFormProps {
   crops: Crop[];
-  selectedCropId: string;
-  onSelectCrop: (cropId: string) => void;
-  quantity: number;
-  onChangeQuantity: (quantity: number) => void;
+  selectedCrops: SelectedCropItem[];
+  onChangeSelectedCrops: (crops: SelectedCropItem[]) => void;
   estimatedProcessingMins: number;
 }
 
 export const CropQuantityForm: React.FC<CropQuantityFormProps> = ({
   crops,
-  selectedCropId,
-  onSelectCrop,
-  quantity,
-  onChangeQuantity,
+  selectedCrops,
+  onChangeSelectedCrops,
   estimatedProcessingMins
 }) => {
   const { t } = useLanguage();
-  const selectedCrop = crops.find((c) => c.id === selectedCropId) || crops[0];
 
-  const quickQuantities = [1000, 2000, 2500, 5000, 8000];
+  const totalQuantity = selectedCrops.reduce((sum, item) => sum + (item.expectedQuantity || 0), 0);
+  const totalEstimatedMspValue = selectedCrops.reduce(
+    (sum, item) => sum + (item.expectedQuantity || 0) * (item.mspRate || 0),
+    0
+  );
+
+  const isCropSelected = (cropId: string) => selectedCrops.some((item) => item.cropId === cropId);
+
+  const toggleCrop = (crop: Crop) => {
+    if (isCropSelected(crop.id)) {
+      // If only 1 crop is selected, do not remove it (keep at least 1)
+      if (selectedCrops.length <= 1) return;
+      onChangeSelectedCrops(selectedCrops.filter((item) => item.cropId !== crop.id));
+    } else {
+      onChangeSelectedCrops([
+        ...selectedCrops,
+        {
+          cropId: crop.id,
+          cropName: crop.name,
+          expectedQuantity: 1000,
+          mspRate: crop.msp_rate
+        }
+      ]);
+    }
+  };
+
+  const updateCropQuantity = (cropId: string, newQty: number) => {
+    const validQty = Math.max(100, isNaN(newQty) ? 100 : newQty);
+    onChangeSelectedCrops(
+      selectedCrops.map((item) =>
+        item.cropId === cropId ? { ...item, expectedQuantity: validQty } : item
+      )
+    );
+  };
+
+  const addQuickQuantity = (cropId: string, addAmount: number) => {
+    onChangeSelectedCrops(
+      selectedCrops.map((item) =>
+        item.cropId === cropId
+          ? { ...item, expectedQuantity: Math.min(50000, item.expectedQuantity + addAmount) }
+          : item
+      )
+    );
+  };
 
   return (
     <div className="bg-white rounded-3xl border border-emerald-100 p-5 sm:p-6 shadow-km-sm space-y-5">
-      <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
-        <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-          <Wheat className="w-4 h-4" />
-        </div>
-        <div>
-          <h3 className="font-bold text-sm text-km-textPrimary">Crop & Quantity Details</h3>
-          <p className="text-[11px] text-km-textSecondary">AI calculates processing and slot availability based on load</p>
+      {/* Header Banner */}
+      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
+            <Wheat className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-sm text-km-textPrimary">Crop & Quantity Consignment</h3>
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Multi-Product Supported
+              </span>
+            </div>
+            <p className="text-[11px] text-km-textSecondary">
+              Select one or multiple grains to sell in this single booking slot
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Crop Selector Grid */}
+      {/* Select Available Crops / Grains Multi-Selector */}
       <div className="space-y-2">
-        <label className="block text-xs font-bold text-km-textPrimary">{t('select_crop')}</label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {crops.map((crop) => (
-            <button
-              key={crop.id}
-              type="button"
-              onClick={() => onSelectCrop(crop.id)}
-              className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
-                selectedCropId === crop.id
-                  ? 'border-km-primary bg-emerald-50/70 shadow-sm ring-2 ring-km-primary/20'
-                  : 'border-gray-200 hover:border-emerald-200 bg-white'
-              }`}
-            >
-              <div>
-                <span className="font-bold text-xs text-km-textPrimary block">{crop.name}</span>
-                <span className="text-[11px] text-km-textSecondary">MSP: ₹{crop.msp_rate.toFixed(2)}/kg</span>
+        <label className="block text-xs font-bold text-km-textPrimary flex items-center justify-between">
+          <span>Select Grains to Sell (Click to Add / Remove):</span>
+          <span className="text-[11px] text-emerald-700 font-semibold">
+            {selectedCrops.length} {selectedCrops.length === 1 ? 'Grain' : 'Grains'} Selected
+          </span>
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {crops.map((crop) => {
+            const selected = isCropSelected(crop.id);
+            return (
+              <button
+                key={crop.id}
+                type="button"
+                onClick={() => toggleCrop(crop)}
+                className={`p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                  selected
+                    ? 'border-km-primary bg-emerald-50/80 shadow-xs ring-2 ring-km-primary/20'
+                    : 'border-gray-200 hover:border-emerald-200 bg-white'
+                }`}
+              >
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-km-textPrimary block">{crop.name}</span>
+                  <span className="text-[11px] text-km-textSecondary font-medium">
+                    Govt MSP: <strong className="text-emerald-800">₹{crop.msp_rate.toFixed(2)}/kg</strong>
+                  </span>
+                </div>
+
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    selected ? 'bg-km-primary text-white shadow-xs' : 'border border-gray-300 text-gray-300'
+                  }`}
+                >
+                  {selected ? '✓' : '+'}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Individual Quantity Adjustments for each selected crop */}
+      <div className="space-y-3 pt-2 border-t border-gray-100">
+        <label className="block text-xs font-bold text-km-textPrimary">
+          Specify Quantities for Selected Grains:
+        </label>
+
+        <div className="space-y-3">
+          {selectedCrops.map((item) => {
+            const subtotalMsp = item.expectedQuantity * item.mspRate;
+            return (
+              <div
+                key={item.cropId}
+                className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/90 space-y-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-km-primary" />
+                    <span className="font-bold text-xs text-km-textPrimary">{item.cropName}</span>
+                    <span className="text-[11px] font-mono text-gray-500 font-semibold">
+                      (@ ₹{item.mspRate.toFixed(2)}/kg)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-xs text-km-primary">
+                      ₹{subtotalMsp.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </span>
+                    {selectedCrops.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleCrop({ id: item.cropId, name: item.cropName, msp_rate: item.mspRate } as any)}
+                        className="p-1 text-gray-400 hover:text-rose-600 rounded-lg transition-colors"
+                        title="Remove Grain"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                      <Scale className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="number"
+                      value={item.expectedQuantity || ''}
+                      onChange={(e) => updateCropQuantity(item.cropId, parseInt(e.target.value, 10))}
+                      step="100"
+                      min="100"
+                      max="50000"
+                      className="w-full pl-9 pr-14 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-km-textPrimary focus:outline-none focus:ring-2 focus:ring-km-primary bg-white"
+                      placeholder="e.g. 2000"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs font-bold text-gray-400">
+                      KG
+                    </div>
+                  </div>
+
+                  {/* Quick increment chips */}
+                  <div className="flex items-center gap-1">
+                    {[500, 1000, 2500].map((inc) => (
+                      <button
+                        key={inc}
+                        type="button"
+                        onClick={() => addQuickQuantity(item.cropId, inc)}
+                        className="px-2 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 text-[10px] font-bold text-km-textPrimary transition-all"
+                      >
+                        +{inc >= 1000 ? `${inc / 1000}T` : `${inc}kg`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                  <span>{(item.expectedQuantity / 100).toFixed(1)} Quintals ({(item.expectedQuantity / 1000).toFixed(2)} Tons)</span>
+                </div>
               </div>
-              {selectedCropId === crop.id && (
-                <span className="w-4 h-4 rounded-full bg-km-primary text-white flex items-center justify-center text-[10px] font-bold">
-                  ✓
-                </span>
-              )}
-            </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Quantity Input with Quick Add Chips */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-km-textPrimary">{t('enter_quantity')}</label>
-          <span className="text-xs font-bold text-km-primary bg-emerald-50 px-2 py-0.5 rounded-md">
-            {(quantity / 100).toFixed(1)} Quintals ({quantity.toLocaleString()} kg)
+      {/* Combined Total Summary Card */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-white border border-emerald-200 space-y-2.5">
+        <div className="flex items-center justify-between text-xs pb-1 border-b border-emerald-100">
+          <span className="font-bold text-emerald-900 uppercase tracking-wider text-[10px]">
+            Combined Consignment Total
+          </span>
+          <span className="text-[11px] font-bold text-emerald-800">
+            {selectedCrops.length} {selectedCrops.length === 1 ? 'Crop' : 'Crops Included'}
           </span>
         </div>
 
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-            <Scale className="w-4 h-4" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+          <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
+            <span className="text-[10px] text-gray-500 block">Total Weight</span>
+            <span className="font-extrabold text-km-primary text-sm font-mono">
+              {totalQuantity.toLocaleString()} kg
+            </span>
+            <span className="text-[10px] text-gray-400 block">
+              {(totalQuantity / 100).toFixed(1)} Quintals
+            </span>
           </div>
-          <input
-            type="number"
-            value={quantity || ''}
-            onChange={(e) => onChangeQuantity(Math.max(100, parseInt(e.target.value, 10) || 0))}
-            step="100"
-            min="100"
-            max="50000"
-            className="w-full pl-10 pr-16 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-km-textPrimary focus:outline-none focus:ring-2 focus:ring-km-primary focus:border-transparent"
-            placeholder="e.g. 2500"
-          />
-          <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-xs font-bold text-gray-400">
-            KG
-          </div>
-        </div>
 
-        {/* Quick Add Chips */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-1">
-          <span className="text-[11px] text-gray-400 mr-1">Quick Select:</span>
-          {quickQuantities.map((q) => (
-            <button
-              key={q}
-              type="button"
-              onClick={() => onChangeQuantity(q)}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
-                quantity === q
-                  ? 'bg-km-primary text-white shadow-sm'
-                  : 'bg-gray-100 text-km-textPrimary hover:bg-gray-200'
-              }`}
-            >
-              {q >= 1000 ? `${q / 1000} Tons` : `${q} kg`}
-            </button>
-          ))}
-        </div>
-      </div>
+          <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
+            <span className="text-[10px] text-gray-500 block">Estimated MSP Value</span>
+            <span className="font-extrabold text-emerald-950 text-sm font-mono">
+              ₹{totalEstimatedMspValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </span>
+            <span className="text-[10px] text-emerald-600 block font-medium">
+              Direct DBT Payout
+            </span>
+          </div>
 
-      {/* AI Processing Calculation Preview */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-100 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-km-primary shrink-0" />
-          <div>
-            <span className="font-bold text-km-textPrimary block">{t('estimated_processing_time')}</span>
-            <span className="text-[11px] text-km-textSecondary">Weighbridge & Moisture grading</span>
+          <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 col-span-2 sm:col-span-1">
+            <span className="text-[10px] text-gray-500 block">Est. Processing</span>
+            <span className="font-extrabold text-blue-900 text-sm flex items-center gap-1 font-mono">
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              ~{estimatedProcessingMins} mins
+            </span>
+            <span className="text-[10px] text-gray-400 block">
+              Weighbridge & Testing
+            </span>
           </div>
         </div>
-        <span className="font-extrabold text-km-primary text-sm">
-          ~{estimatedProcessingMins} mins
-        </span>
       </div>
     </div>
   );

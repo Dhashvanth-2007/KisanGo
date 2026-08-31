@@ -1,8 +1,8 @@
 import React from 'react';
 import { Modal } from '../common/Modal';
-import { ProcurementCenter, Slot, Crop } from '../../types';
+import { ProcurementCenter, Slot, Crop, SelectedCropItem } from '../../types';
 import { RatingStars } from '../common/RatingStars';
-import { MapPin, Clock, Calendar, Wheat, Check, ArrowRight, ShieldCheck } from 'lucide-react';
+import { MapPin, Clock, Calendar, Wheat, Check, ArrowRight, ShieldCheck, Scale, DollarSign } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface SlotConfirmationModalProps {
@@ -10,8 +10,9 @@ interface SlotConfirmationModalProps {
   onClose: () => void;
   center: ProcurementCenter | null;
   slot: Slot | null;
-  crop: Crop | null;
-  quantity: number;
+  crop?: Crop | null;
+  quantity?: number;
+  selectedCrops?: SelectedCropItem[];
   onConfirm: () => void;
   isConfirming?: boolean;
 }
@@ -22,13 +23,35 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
   center,
   slot,
   crop,
-  quantity,
+  quantity = 2500,
+  selectedCrops,
   onConfirm,
   isConfirming = false
 }) => {
   const { t } = useLanguage();
 
-  if (!center || !slot || !crop) return null;
+  if (!center || !slot) return null;
+
+  // Multi-crop fallback list
+  const cropsList: SelectedCropItem[] =
+    selectedCrops && selectedCrops.length > 0
+      ? selectedCrops
+      : crop
+      ? [
+          {
+            cropId: crop.id,
+            cropName: crop.name,
+            expectedQuantity: quantity,
+            mspRate: crop.msp_rate
+          }
+        ]
+      : [];
+
+  const totalQuantity = cropsList.reduce((sum, item) => sum + (item.expectedQuantity || 0), 0);
+  const totalEstimatedMsp = cropsList.reduce(
+    (sum, item) => sum + (item.expectedQuantity || 0) * (item.mspRate || 0),
+    0
+  );
 
   const travelTime = center.travelTimeMins || 40;
   const waitingTime = center.waitingTimeMins || 15;
@@ -40,7 +63,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Confirm Your Procurement Slot"
-      subtitle="Verify your booking details before token generation"
+      subtitle="Verify your multi-crop consignment details before token generation"
       maxWidth="lg"
     >
       <div className="space-y-5">
@@ -61,21 +84,58 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
           </div>
         </div>
 
-        {/* Booking Details Grid */}
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          {/* Crop & Quantity */}
-          <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100 space-y-1">
-            <span className="text-gray-400 block font-semibold text-[10px] uppercase">Consignment</span>
-            <span className="font-bold text-km-textPrimary block text-sm">{crop.name}</span>
-            <span className="text-km-primary font-extrabold">{quantity.toLocaleString()} kg ({(quantity / 100).toFixed(1)} Quintals)</span>
+        {/* Multi-Crop Itemized Breakdown Box */}
+        <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 space-y-3 text-xs">
+          <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+            <span className="font-bold text-gray-700 uppercase tracking-wider text-[10px]">
+              Consignment Items ({cropsList.length} {cropsList.length === 1 ? 'Grain' : 'Grains'})
+            </span>
+            <span className="font-extrabold text-km-primary font-mono text-xs">
+              Total: {totalQuantity.toLocaleString()} kg ({(totalQuantity / 100).toFixed(1)} Qtl)
+            </span>
           </div>
 
-          {/* Slot & Departure */}
-          <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100 space-y-1">
-            <span className="text-gray-400 block font-semibold text-[10px] uppercase">Slot Window</span>
-            <span className="font-bold text-km-textPrimary block text-sm">{slot.start_time} - {slot.end_time}</span>
-            <span className="text-blue-700 font-bold block">Depart by: {slot.recommended_departure || '09:05 AM'}</span>
+          <div className="space-y-2 divide-y divide-gray-100">
+            {cropsList.map((item) => {
+              const subtotal = item.expectedQuantity * item.mspRate;
+              return (
+                <div key={item.cropId} className="pt-2 first:pt-0 flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-xs text-km-textPrimary block">{item.cropName}</span>
+                    <span className="text-[11px] text-gray-500 font-medium">
+                      {item.expectedQuantity.toLocaleString()} kg @ ₹{item.mspRate.toFixed(2)}/kg
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono font-bold text-xs text-emerald-950">
+                      ₹{subtotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </span>
+                    <span className="text-[10px] text-gray-400 block font-medium">Est. MSP</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-gray-200 bg-emerald-50/60 p-2.5 rounded-xl text-emerald-950">
+            <span className="font-bold text-xs">Total Estimated DBT Payout:</span>
+            <span className="font-extrabold text-sm font-mono text-km-primary">
+              ₹{totalEstimatedMsp.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+        </div>
+
+        {/* Slot Window & Departure Guidance */}
+        <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100 flex items-center justify-between text-xs">
+          <div className="space-y-0.5">
+            <span className="text-blue-900 font-bold block text-sm">
+              Slot Time: {slot.start_time} - {slot.end_time}
+            </span>
+            <span className="text-blue-700 font-semibold text-[11px]">
+              Recommended Village Departure: <strong>{slot.recommended_departure || '09:05 AM'}</strong>
+            </span>
+          </div>
+          <Clock className="w-5 h-5 text-blue-600 shrink-0" />
         </div>
 
         {/* Total Time Breakdown Banner */}
@@ -107,7 +167,7 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
         {/* Guarantees */}
         <div className="flex items-center gap-2 text-xs text-km-textSecondary bg-gray-50 p-2.5 rounded-xl">
           <ShieldCheck className="w-4 h-4 text-km-primary shrink-0" />
-          <span>Priority bay reservation guaranteed with digital token on arrival.</span>
+          <span>Priority bay reservation guaranteed with digital token for all grains in this consignment.</span>
         </div>
 
         {/* Actions */}

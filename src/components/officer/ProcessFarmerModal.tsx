@@ -35,8 +35,24 @@ export const ProcessFarmerModal: React.FC<ProcessFarmerModalProps> = ({
 
   if (!farmer) return null;
 
+  let parsedCrops: any[] = [];
+  if (farmer.crops_breakdown) {
+    try {
+      parsedCrops = JSON.parse(farmer.crops_breakdown);
+    } catch (e) {}
+  }
+  if (parsedCrops.length === 0 && farmer.crop_name) {
+    parsedCrops = [{
+      cropName: farmer.crop_name,
+      expectedQuantity: farmer.expected_quantity,
+      mspRate: farmer.msp_rate || 23.2
+    }];
+  }
+
   const ratePerKg = farmer.msp_rate || 23.2;
-  const grossAmount = actualQuantity * ratePerKg;
+  const grossAmount = parsedCrops.length > 1
+    ? parsedCrops.reduce((s, c) => s + (c.expectedQuantity || 0) * (c.mspRate || 23.0), 0)
+    : actualQuantity * ratePerKg;
   const moistureDeductionRate = moisture > 14.0 ? (moisture - 14.0) * 0.25 : 0;
   const totalDeductions = actualQuantity * moistureDeductionRate;
   const netAmount = grossAmount - totalDeductions;
@@ -120,8 +136,21 @@ export const ProcessFarmerModal: React.FC<ProcessFarmerModalProps> = ({
                 <div><strong>Token Number:</strong> {farmer.token_number}</div>
                 <div><strong>Mobile:</strong> +91 {farmer.farmer_mobile || '9876543210'}</div>
                 <div><strong>Slot:</strong> {farmer.slot_start} - {farmer.slot_end}</div>
-                <div><strong>Declared Quantity:</strong> {farmer.expected_quantity?.toLocaleString()} kg</div>
+                <div><strong>Total Quantity:</strong> {farmer.expected_quantity?.toLocaleString()} kg</div>
               </div>
+
+              {parsedCrops.length > 0 && (
+                <div className="pt-2 border-t border-emerald-200/80 space-y-1">
+                  <span className="font-bold text-[10px] text-emerald-900 block">Declared Grain Breakdown:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {parsedCrops.map((c, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-lg bg-white border border-emerald-200 text-km-primary text-[11px] font-bold">
+                        {c.cropName}: {c.expectedQuantity.toLocaleString()} kg (@ ₹{c.mspRate}/kg)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-xs text-km-textSecondary">

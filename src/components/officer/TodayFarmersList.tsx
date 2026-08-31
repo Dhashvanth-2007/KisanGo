@@ -130,12 +130,34 @@ export const TodayFarmersList: React.FC<TodayFarmersListProps> = ({
                       <span>{farmer.farmer_village || 'Tiruvannamalai'}</span>
                     </div>
 
-                    <div className="flex items-center gap-3 pt-1 text-xs">
-                      <span className="font-bold text-km-primary flex items-center gap-1">
-                        <Wheat className="w-3.5 h-3.5 text-amber-600" />
-                        <span>{farmer.crop_name} • {(farmer.actual_quantity || farmer.expected_quantity)?.toLocaleString()} kg</span>
-                      </span>
-                      <span className="text-gray-500 font-semibold">
+                    <div className="flex items-center gap-3 pt-1 text-xs flex-wrap">
+                      {(() => {
+                        let parsedCrops: any[] = [];
+                        if (farmer.crops_breakdown) {
+                          try {
+                            parsedCrops = JSON.parse(farmer.crops_breakdown);
+                          } catch (e) {}
+                        }
+                        if (parsedCrops.length > 0) {
+                          return (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {parsedCrops.map((c, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-km-primary border border-emerald-200 text-[11px] font-bold">
+                                  <Wheat className="w-3 h-3 text-amber-600" />
+                                  <span>{c.cropName}: {c.expectedQuantity.toLocaleString()}kg</span>
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return (
+                          <span className="font-bold text-km-primary flex items-center gap-1">
+                            <Wheat className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{farmer.crop_name} • {(farmer.actual_quantity || farmer.expected_quantity)?.toLocaleString()} kg</span>
+                          </span>
+                        );
+                      })()}
+                      <span className="text-gray-500 font-semibold text-[11px]">
                         Slot: {farmer.slot_start} - {farmer.slot_end}
                       </span>
                     </div>

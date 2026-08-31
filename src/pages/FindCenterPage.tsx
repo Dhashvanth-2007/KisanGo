@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ProcurementCenter, Slot, Crop } from '../types';
+import { ProcurementCenter, Slot, Crop, SelectedCropItem } from '../types';
 import { CenterDiscoveryMap } from '../components/map/CenterDiscoveryMap';
 import { CenterCard } from '../components/center/CenterCard';
 import { CenterComparisonModal } from '../components/center/CenterComparisonModal';
@@ -53,12 +53,13 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
   // Booking Wizard State
   const [bookingCenter, setBookingCenter] = useState<ProcurementCenter | null>(null);
   const [bookingStep, setBookingStep] = useState<'crop_qty' | 'slots'>('crop_qty');
-  const [selectedCropId, setSelectedCropId] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(2500);
+  const [selectedCrops, setSelectedCrops] = useState<SelectedCropItem[]>([]);
   const [centerSlots, setCenterSlots] = useState<Slot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
+
+  const totalConsignmentQuantity = selectedCrops.reduce((s, c) => s + (c.expectedQuantity || 0), 0);
 
   // AI Center recommendation highlight
   const aiRecommendedCenter = centers.find((c) => c.ai_recommended) || centers[0];
@@ -76,12 +77,24 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
   const handleStartBooking = async (center: ProcurementCenter) => {
     setBookingCenter(center);
     setBookingStep('crop_qty');
-    const defaultCrop = center.crops?.[0]?.id || `crop-${center.id}-1`;
-    setSelectedCropId(defaultCrop);
+
+    const defaultCrops = center.crops && center.crops.length > 0 ? center.crops : [
+      { id: `crop-${center.id}-1`, name: 'Paddy (Common / நெல்)', center_id: center.id, msp_rate: 23.0, unit: 'kg', processing_rate_mins_per_ton: 12, active: 1 }
+    ];
+
+    const firstCrop = defaultCrops[0];
+    setSelectedCrops([
+      {
+        cropId: firstCrop.id,
+        cropName: firstCrop.name,
+        expectedQuantity: 2000,
+        mspRate: firstCrop.msp_rate
+      }
+    ]);
 
     // Fetch live slots with processing calculation
     try {
-      const res = await api.getCenterSlots(center.id, undefined, quantity);
+      const res = await api.getCenterSlots(center.id, undefined, 2000);
       if (res.success && res.data.slots) {
         setCenterSlots(res.data.slots);
         const aiSlot = res.data.slots.find((s: Slot) => s.is_ai_recommended);
@@ -93,22 +106,24 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
   };
 
   const handleConfirmBooking = async () => {
-    if (!bookingCenter || !selectedSlot || !selectedCropId) return;
+    if (!bookingCenter || !selectedSlot || selectedCrops.length === 0) return;
 
     setIsBookingSubmitting(true);
     try {
+      const totalQty = selectedCrops.reduce((sum, c) => sum + (c.expectedQuantity || 0), 0);
       const res = await api.bookSlot({
         farmerId: user?.id || 'farmer-1',
         centerId: bookingCenter.id,
         slotId: selectedSlot.id,
-        cropId: selectedCropId,
-        expectedQuantity: quantity,
+        cropId: selectedCrops[0]?.cropId || 'crop-1',
+        expectedQuantity: totalQty,
+        crops: selectedCrops,
         lat: user && 'latitude' in user ? user.latitude : 12.2253,
         lng: user && 'longitude' in user ? user.longitude : 79.0747
       });
 
       if (res.success) {
-        showToast(`Slot Confirmed! Digital Token: ${res.data.tokenNumber}`, 'success');
+        showToast(`Slot Confirmed for ${selectedCrops.length} ${selectedCrops.length === 1 ? 'Grain' : 'Grains'}! Digital Token: ${res.data.tokenNumber}`, 'success');
         setIsConfirmationOpen(false);
         setBookingCenter(null);
         onBookingSuccess();
@@ -280,25 +295,29 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
               <div className="space-y-4">
                 <CropQuantityForm
                   crops={
-                    bookingCenter.crops || [
-                      { id: `crop-${bookingCenter.id}-1`, name: 'Paddy (Common / நெல்)', center_id: bookingCenter.id, msp_rate: 23.0, unit: 'kg', processing_rate_mins_per_ton: 12, active: 1 },
-                      { id: `crop-${bookingCenter.id}-2`, name: 'Paddy (Grade A / முதல் தரம்)', center_id: bookingCenter.id, msp_rate: 23.2, unit: 'kg', processing_rate_mins_per_ton: 10, active: 1 },
-                      { id: `crop-${bookingCenter.id}-3`, name: 'Maize (மக்காச்சோளம்)', center_id: bookingCenter.id, msp_rate: 20.9, unit: 'kg', processing_rate_mins_per_ton: 14, active: 1 }
-                    ]
+                    bookingCenter.crops && bookingCenter.crops.length > 0
+                      ? bookingCenter.crops
+                      : [
+                          { id: `crop-${bookingCenter.id}-1`, name: 'Paddy (Common / நெல்)', center_id: bookingCenter.id, msp_rate: 23.0, unit: 'kg', processing_rate_mins_per_ton: 12, active: 1 },
+                          { id: `crop-${bookingCenter.id}-2`, name: 'Paddy (Grade A / முதல் தரம்)', center_id: bookingCenter.id, msp_rate: 23.2, unit: 'kg', processing_rate_mins_per_ton: 10, active: 1 },
+                          { id: `crop-${bookingCenter.id}-3`, name: 'Maize (மக்காச்சோளம்)', center_id: bookingCenter.id, msp_rate: 20.9, unit: 'kg', processing_rate_mins_per_ton: 14, active: 1 },
+                          { id: `crop-${bookingCenter.id}-4`, name: 'Groundnut (நிலக்கடலை)', center_id: bookingCenter.id, msp_rate: 63.77, unit: 'kg', processing_rate_mins_per_ton: 15, active: 1 },
+                          { id: `crop-${bookingCenter.id}-5`, name: 'Ragi (கேழ்வரகு)', center_id: bookingCenter.id, msp_rate: 42.9, unit: 'kg', processing_rate_mins_per_ton: 12, active: 1 },
+                          { id: `crop-${bookingCenter.id}-6`, name: 'Black Gram / Urad (உளுந்து)', center_id: bookingCenter.id, msp_rate: 74.0, unit: 'kg', processing_rate_mins_per_ton: 16, active: 1 }
+                        ]
                   }
-                  selectedCropId={selectedCropId}
-                  onSelectCrop={(id) => setSelectedCropId(id)}
-                  quantity={quantity}
-                  onChangeQuantity={(q) => setQuantity(q)}
-                  estimatedProcessingMins={Math.round(15 + Math.max(0, (quantity - 1000) / 1000) * 5)}
+                  selectedCrops={selectedCrops}
+                  onChangeSelectedCrops={(crops) => setSelectedCrops(crops)}
+                  estimatedProcessingMins={Math.round(15 + Math.max(0, (totalConsignmentQuantity - 1000) / 1000) * 5)}
                 />
 
                 <button
                   type="button"
                   onClick={() => setBookingStep('slots')}
-                  className="w-full py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md transition-colors"
+                  disabled={selectedCrops.length === 0}
+                  className="w-full py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md transition-colors disabled:opacity-50"
                 >
-                  <span>Proceed to Available Time Slots</span>
+                  <span>Proceed to Available Time Slots ({selectedCrops.length} {selectedCrops.length === 1 ? 'Grain' : 'Grains'})</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -320,7 +339,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
                     onClick={() => setBookingStep('crop_qty')}
                     className="w-1/3 py-3 border border-gray-200 rounded-2xl text-xs font-bold text-gray-600 hover:bg-gray-50"
                   >
-                    Back to Crop
+                    Back to Crops
                   </button>
                   <button
                     type="button"
@@ -344,18 +363,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
         onClose={() => setIsConfirmationOpen(false)}
         center={bookingCenter}
         slot={selectedSlot}
-        crop={
-          bookingCenter?.crops?.find((c) => c.id === selectedCropId) || {
-            id: selectedCropId,
-            name: 'Paddy (Common / நெல்)',
-            center_id: bookingCenter?.id || '',
-            msp_rate: 23.0,
-            unit: 'kg',
-            processing_rate_mins_per_ton: 12,
-            active: 1
-          }
-        }
-        quantity={quantity}
+        selectedCrops={selectedCrops}
         onConfirm={handleConfirmBooking}
         isConfirming={isBookingSubmitting}
       />

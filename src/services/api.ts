@@ -166,6 +166,7 @@ export const api = {
     slotId: string;
     cropId: string;
     expectedQuantity: number;
+    crops?: any[];
     lat?: number;
     lng?: number;
   }) {

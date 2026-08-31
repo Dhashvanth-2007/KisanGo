@@ -38,6 +38,13 @@ export interface Crop {
   active: number;
 }
 
+export interface SelectedCropItem {
+  cropId: string;
+  cropName: string;
+  expectedQuantity: number;
+  mspRate: number;
+}
+
 export interface CenterPhoto {
   id: string;
   center_id: string;
@@ -188,6 +195,10 @@ export interface Booking {
   net_amount?: number;
   payment_status?: string;
   utr_reference?: string;
+  crops?: SelectedCropItem[];
+  crops_breakdown?: string;
+  crops_summary?: string;
+  total_estimated_value?: number;
 }
 
 export interface DigitalToken {

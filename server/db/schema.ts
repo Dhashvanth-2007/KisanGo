@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   estimated_waiting_mins INTEGER DEFAULT 15,
   travel_time_mins INTEGER DEFAULT 20,
   status TEXT NOT NULL DEFAULT 'Slot Booked', -- 'Slot Booked', 'Traveling', 'Arrived', 'Waiting', 'Called', 'Processing', 'Weight Recorded', 'Quality Checked', 'Procurement Completed', 'Bill Generated', 'Payment Processing', 'Payment Completed', 'Cancelled'
+  crops_breakdown TEXT, -- JSON array of selected crops and quantities
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (farmer_id) REFERENCES farmers(id),
   FOREIGN KEY (center_id) REFERENCES procurement_centers(id),
