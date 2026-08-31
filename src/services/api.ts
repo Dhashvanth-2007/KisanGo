@@ -57,6 +57,23 @@ export const api = {
     return handleResponse(res);
   },
 
+  async registerOfficer(payload: {
+    officerId: string;
+    name: string;
+    designation: string;
+    assignedCenterId: string;
+    officialContact: string;
+    workingHours: string;
+    password: string;
+  }) {
+    const res = await fetch(`${BASE_URL}/auth/officer/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
   async updateFarmerProfile(payload: {
     id: string;
     name?: string;

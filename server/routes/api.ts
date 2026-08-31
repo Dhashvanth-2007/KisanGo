@@ -3,6 +3,7 @@ import {
   sendFarmerOTP,
   verifyFarmerOTP,
   officerLogin,
+  registerOfficer,
   updateFarmerProfile,
   updateOfficerProfile
 } from '../controllers/authController.js';
@@ -46,6 +47,7 @@ const router = Router();
 router.post('/auth/farmer/send-otp', sendFarmerOTP);
 router.post('/auth/farmer/verify-otp', verifyFarmerOTP);
 router.post('/auth/officer/login', officerLogin);
+router.post('/auth/officer/register', registerOfficer);
 router.put('/farmers/profile', updateFarmerProfile);
 router.put('/officers/profile', updateOfficerProfile);
 

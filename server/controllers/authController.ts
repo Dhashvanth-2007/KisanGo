@@ -99,14 +99,15 @@ export const officerLogin = (req: Request, res: Response): void => {
   try {
     const { officerId, password } = req.body;
     if (!officerId || !password) {
-      res.status(400).json({ success: false, message: 'Officer ID and password are required' });
+      res.status(400).json({ success: false, message: 'Officer ID or mobile number and password are required' });
       return;
     }
 
-    const officer = db.prepare('SELECT * FROM officers WHERE officer_id = ?').get(officerId.trim()) as any;
+    const cleanId = officerId.trim();
+    const officer = db.prepare('SELECT * FROM officers WHERE officer_id = ? OR official_contact LIKE ?').get(cleanId, `%${cleanId}%`) as any;
 
     if (!officer || officer.password !== password) {
-      res.status(401).json({ success: false, message: 'Invalid Officer ID or Password. Try OFFICER-A, OFFICER-B, or OFFICER-C with password: password123' });
+      res.status(401).json({ success: false, message: 'Invalid Officer credentials. Check ID/Password or Register as a New Officer.' });
       return;
     }
 
@@ -119,6 +120,76 @@ export const officerLogin = (req: Request, res: Response): void => {
     res.json({
       success: true,
       message: 'Officer authenticated successfully',
+      token: `km-officer-token-${officer.id}`,
+      user: {
+        ...officerSafe,
+        role: 'officer',
+        center: assignedCenter
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const registerOfficer = (req: Request, res: Response): void => {
+  try {
+    const {
+      officerId,
+      name,
+      designation,
+      assignedCenterId,
+      officialContact,
+      workingHours,
+      password
+    } = req.body;
+
+    if (!officerId || !name || !assignedCenterId || !password) {
+      res.status(400).json({
+        success: false,
+        message: 'Officer ID, Full Name, Assigned Center, and Password are required'
+      });
+      return;
+    }
+
+    const cleanOfficerId = officerId.trim().toUpperCase();
+    const cleanName = name.trim();
+    const cleanDesignation = designation?.trim() || 'Procurement Officer';
+    const cleanCenterId = assignedCenterId.trim();
+    const cleanContact = officialContact?.trim() || '+91 98765 00000';
+    const cleanHours = workingHours?.trim() || '08:30 AM - 05:30 PM';
+    const cleanPassword = password.trim();
+
+    let existing = db.prepare('SELECT * FROM officers WHERE officer_id = ?').get(cleanOfficerId) as any;
+
+    if (existing) {
+      // Update existing officer
+      db.prepare(`
+        UPDATE officers
+        SET name = ?,
+            designation = ?,
+            assigned_center_id = ?,
+            working_hours = ?,
+            official_contact = ?,
+            password = ?
+        WHERE officer_id = ?
+      `).run(cleanName, cleanDesignation, cleanCenterId, cleanHours, cleanContact, cleanPassword, cleanOfficerId);
+    } else {
+      // Insert new officer
+      const newId = `officer-${Date.now()}`;
+      db.prepare(`
+        INSERT INTO officers (id, officer_id, password, name, designation, assigned_center_id, working_hours, official_contact)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(newId, cleanOfficerId, cleanPassword, cleanName, cleanDesignation, cleanCenterId, cleanHours, cleanContact);
+    }
+
+    const officer = db.prepare('SELECT * FROM officers WHERE officer_id = ?').get(cleanOfficerId) as any;
+    const assignedCenter = db.prepare('SELECT * FROM procurement_centers WHERE id = ?').get(officer.assigned_center_id);
+    const { password: _, ...officerSafe } = officer;
+
+    res.json({
+      success: true,
+      message: 'Officer registered and authenticated successfully',
       token: `km-officer-token-${officer.id}`,
       user: {
         ...officerSafe,
