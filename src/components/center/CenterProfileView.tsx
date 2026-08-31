@@ -81,7 +81,7 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
           <span>{center.name}</span>
           {center.ai_recommended && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
-              <Sparkles className="w-3 h-3 text-amber-600" /> AI Recommended
+              <Sparkles className="w-3 h-3 text-amber-600" /> {t('ai_recommended')}
             </span>
           )}
         </div>
@@ -144,10 +144,10 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
         {/* Tab Navigation */}
         <div className="flex border-b border-gray-200 gap-1 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Overview & Live Stats' },
-            { id: 'crops', label: 'Accepted Crops & MSP' },
-            { id: 'facilities', label: 'Center Facilities' },
-            { id: 'reviews', label: `Reviews (${center.review_count})` }
+            { id: 'overview', label: t('tab_overview_stats') },
+            { id: 'crops', label: t('tab_accepted_crops') },
+            { id: 'facilities', label: t('tab_center_facilities') },
+            { id: 'reviews', label: `${t('tab_reviews')} (${center.review_count})` }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -171,51 +171,51 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
               <div className="bg-emerald-50/70 border border-emerald-100 p-3 rounded-2xl text-center">
                 <div className="flex items-center justify-center gap-1 text-xs text-km-textSecondary mb-1">
                   <Users className="w-3.5 h-3.5 text-km-primary" />
-                  <span>Current Queue</span>
+                  <span>{t('current_queue')}</span>
                 </div>
                 <span className="font-extrabold text-lg text-emerald-900">{center.queue}</span>
-                <span className="text-[10px] text-gray-500 block">Vehicles in line</span>
+                <span className="text-[10px] text-gray-500 block">{t('vehicles_in_line')}</span>
               </div>
 
               <div className="bg-blue-50/70 border border-blue-100 p-3 rounded-2xl text-center">
                 <div className="flex items-center justify-center gap-1 text-xs text-blue-800 mb-1">
                   <Clock className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Wait Time</span>
+                  <span>{t('waiting_time')}</span>
                 </div>
                 <span className="font-extrabold text-lg text-blue-950">{center.waiting_time}</span>
-                <span className="text-[10px] text-gray-500 block">Average processing</span>
+                <span className="text-[10px] text-gray-500 block">{t('avg_processing')}</span>
               </div>
 
               <div className="bg-amber-50/70 border border-amber-100 p-3 rounded-2xl text-center">
                 <div className="flex items-center justify-center gap-1 text-xs text-amber-900 mb-1">
                   <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Available Slots</span>
+                  <span>{t('available_slots')}</span>
                 </div>
                 <span className="font-extrabold text-lg text-amber-950">{center.available_slots}</span>
-                <span className="text-[10px] text-gray-500 block">Open for booking today</span>
+                <span className="text-[10px] text-gray-500 block">{t('open_for_booking_today')}</span>
               </div>
 
               <div className="bg-purple-50/70 border border-purple-100 p-3 rounded-2xl text-center">
                 <div className="flex items-center justify-center gap-1 text-xs text-purple-900 mb-1">
                   <Navigation className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Distance</span>
+                  <span>{t('distance')}</span>
                 </div>
                 <span className="font-extrabold text-lg text-purple-950">{center.distance}</span>
-                <span className="text-[10px] text-gray-500 block">{center.travel_time} drive</span>
+                <span className="text-[10px] text-gray-500 block">{center.travel_time} {t('drive_time')}</span>
               </div>
             </div>
 
             {/* Description & Operating Hours */}
             <div className="bg-gray-50/70 border border-gray-100 p-4 rounded-2xl space-y-2">
               <h4 className="text-xs font-bold text-km-textPrimary uppercase tracking-wider">
-                About this Center
+                {t('about_this_center')}
               </h4>
               <p className="text-xs text-km-textSecondary leading-relaxed">
                 {center.description}
               </p>
               <div className="flex items-center gap-2 pt-2 text-xs text-km-textPrimary font-semibold">
                 <Clock className="w-4 h-4 text-km-primary shrink-0" />
-                <span>Working Hours: {center.working_hours}</span>
+                <span>{t('working_hours_label')}: {center.working_hours}</span>
               </div>
             </div>
 
@@ -228,7 +228,7 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      Authorized Officer
+                      {t('authorized_officer')}
                     </span>
                     <h4 className="font-bold text-sm text-km-textPrimary mt-1">
                       {center.officer_details.name}
@@ -251,15 +251,15 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
         {activeTab === 'crops' && (
           <div className="space-y-3">
             <p className="text-xs text-km-textSecondary">
-              Official Minimum Support Prices (MSP) guaranteed for certified grade deliveries at this center:
+              {t('msp_guarantee_notice')}
             </p>
             <div className="border border-gray-200 rounded-2xl overflow-hidden">
               <table className="w-full text-left text-xs">
                 <thead className="bg-emerald-50/70 border-b border-gray-200 text-km-textPrimary font-bold">
                   <tr>
-                    <th className="p-3">Crop Name</th>
-                    <th className="p-3">MSP Rate</th>
-                    <th className="p-3">Avg Unloading Speed</th>
+                    <th className="p-3">{t('crop_name')}</th>
+                    <th className="p-3">{t('msp_rate')}</th>
+                    <th className="p-3">{t('avg_unloading_speed')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -307,19 +307,19 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
             {center.ratings_breakdown && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-gray-50/70 p-3 rounded-2xl border border-gray-100 text-center text-xs">
                 <div>
-                  <span className="text-gray-500 block text-[10px]">Waiting Time</span>
+                  <span className="text-gray-500 block text-[10px]">{t('waiting_time')}</span>
                   <span className="font-bold text-km-primary">{center.ratings_breakdown.waiting} / 5.0</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px]">Staff Helpfulness</span>
+                  <span className="text-gray-500 block text-[10px]">{t('staff_helpfulness')}</span>
                   <span className="font-bold text-km-primary">{center.ratings_breakdown.staff} / 5.0</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px]">Processing Speed</span>
+                  <span className="text-gray-500 block text-[10px]">{t('processing_speed')}</span>
                   <span className="font-bold text-km-primary">{center.ratings_breakdown.processing} / 5.0</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px]">Facilities</span>
+                  <span className="text-gray-500 block text-[10px]">{t('facilities_rating')}</span>
                   <span className="font-bold text-km-primary">{center.ratings_breakdown.facilities} / 5.0</span>
                 </div>
               </div>
@@ -329,7 +329,7 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
             <form onSubmit={handleReviewSubmit} className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 space-y-2">
               <h5 className="text-xs font-bold text-km-textPrimary flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5 text-km-primary" />
-                <span>Leave Farmer Feedback</span>
+                <span>{t('leave_feedback')}</span>
               </h5>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500">Rating:</span>
@@ -359,7 +359,7 @@ export const CenterProfileView: React.FC<CenterProfileViewProps> = ({
                   disabled={isSubmittingReview || !reviewInput.trim()}
                   className="px-4 py-2 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
                 >
-                  Submit
+                  {t('submit_review')}
                 </button>
               </div>
             </form>

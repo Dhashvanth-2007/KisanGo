@@ -27,8 +27,8 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Compare Procurement Centers"
-      subtitle={`Side-by-side comparison of ${centers.length} centers`}
+      title={t('compare_modal_title')}
+      subtitle={`${t('compare_modal_sub')} (${centers.length})`}
       maxWidth="4xl"
     >
       <div className="overflow-x-auto">
@@ -36,14 +36,14 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
           <thead>
             <tr className="border-b border-gray-200">
               <th className="p-3 font-bold text-gray-500 uppercase tracking-wider bg-gray-50/80 sticky left-0 min-w-[140px]">
-                Criteria
+                {t('criteria')}
               </th>
               {centers.map((center) => (
                 <th key={center.id} className="p-3 min-w-[200px] align-top bg-white">
                   <div className="flex flex-col gap-1.5">
                     {center.ai_recommended && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full w-max">
-                        <Sparkles className="w-3 h-3 text-amber-600" /> AI Recommended
+                        <Sparkles className="w-3 h-3 text-amber-600" /> {t('ai_recommended')}
                       </span>
                     )}
                     <h4 className="font-bold text-sm text-km-textPrimary leading-tight">
@@ -60,7 +60,7 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
           <tbody className="divide-y divide-gray-100">
             {/* Status */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Status</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('status_label')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3">
                   <Badge
@@ -81,7 +81,7 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
 
             {/* Distance & Travel Time */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Distance & Travel</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('distance')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3 font-bold text-km-textPrimary">
                   {center.distance} <span className="text-gray-500 font-normal">({center.travel_time})</span>
@@ -91,17 +91,17 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
 
             {/* Current Queue */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Current Queue</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('current_queue')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3 font-bold text-km-textPrimary">
-                  {center.queue} Vehicles
+                  {center.queue} {t('vehicles_label')}
                 </td>
               ))}
             </tr>
 
             {/* Estimated Waiting Time */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Est. Waiting Time</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('waiting_time')}</td>
               {centers.map((center) => (
                 <td
                   key={center.id}
@@ -120,17 +120,17 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
 
             {/* Available Slots */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Available Slots</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('available_slots')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3 font-bold text-km-primary">
-                  {center.available_slots} Slots
+                  {center.available_slots} {t('slots_label')}
                 </td>
               ))}
             </tr>
 
             {/* Farmer Rating */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Farmer Rating</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('facilities_rating')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3">
                   <RatingStars rating={center.rating} reviewCount={center.review_count} size="sm" />
@@ -140,7 +140,7 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
 
             {/* Working Hours */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Working Hours</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('working_hours_label')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3 text-km-textSecondary">
                   {center.working_hours}
@@ -150,7 +150,7 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
 
             {/* Key Facilities */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Key Facilities</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('tab_center_facilities')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3 text-xs text-km-textSecondary">
                   <ul className="space-y-1">
@@ -167,7 +167,7 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
 
             {/* Officer In-Charge */}
             <tr>
-              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">Officer in Charge</td>
+              <td className="p-3 font-semibold text-gray-700 bg-gray-50/50 sticky left-0">{t('officer_in_charge')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3 text-xs font-medium text-km-textPrimary">
                   {center.officer}
@@ -177,7 +177,7 @@ export const CenterComparisonModal: React.FC<CenterComparisonModalProps> = ({
 
             {/* Action Row */}
             <tr className="bg-gray-50/70">
-              <td className="p-3 font-semibold text-gray-700 sticky left-0">Action</td>
+              <td className="p-3 font-semibold text-gray-700 sticky left-0">{t('action_label')}</td>
               {centers.map((center) => (
                 <td key={center.id} className="p-3">
                   <button

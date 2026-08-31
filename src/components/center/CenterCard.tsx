@@ -41,7 +41,7 @@ export const CenterCard: React.FC<CenterCardProps> = ({
             <span>{t('ai_recommended')} • {t('optimal_choice')}</span>
           </div>
           <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-mono">
-            Saves ~45 mins
+            {t('saves_time_badge')}
           </span>
         </div>
       )}
@@ -79,7 +79,7 @@ export const CenterCard: React.FC<CenterCardProps> = ({
                 onChange={() => onCompareToggle(center)}
                 className="w-3.5 h-3.5 rounded text-km-primary focus:ring-emerald-500 accent-km-primary cursor-pointer"
               />
-              <span>Compare</span>
+              <span>{t('compare_checkbox')}</span>
             </label>
           )}
         </div>
@@ -129,7 +129,7 @@ export const CenterCard: React.FC<CenterCardProps> = ({
               <span>{t('current_queue')}</span>
             </div>
             <span className="font-extrabold text-sm sm:text-base text-km-textPrimary">
-              {center.queue} <span className="text-[10px] font-normal text-gray-500">Vehicles</span>
+              {center.queue} <span className="text-[10px] font-normal text-gray-500">{t('vehicles_label')}</span>
             </span>
           </div>
 
@@ -159,7 +159,7 @@ export const CenterCard: React.FC<CenterCardProps> = ({
               <span>{t('available_slots')}</span>
             </div>
             <span className={`font-extrabold text-sm sm:text-base ${center.available_slots > 0 ? 'text-km-primary' : 'text-rose-600'}`}>
-              {center.available_slots} <span className="text-[10px] font-normal text-gray-500">Slots</span>
+              {center.available_slots} <span className="text-[10px] font-normal text-gray-500">{t('slots_label')}</span>
             </span>
           </div>
         </div>
