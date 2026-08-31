@@ -25,6 +25,8 @@ export async function ensureInitialized() {
         isInitialized = true;
       } catch (err) {
         console.error('Initialization error:', err);
+        initPromise = null;
+        throw err;
       }
     })();
   }
@@ -32,8 +34,16 @@ export async function ensureInitialized() {
 }
 
 app.use(async (req, res, next) => {
-  await ensureInitialized();
-  next();
+  try {
+    await ensureInitialized();
+    next();
+  } catch (err: any) {
+    console.error('Database initialization error in request:', err);
+    res.status(500).json({
+      success: false,
+      message: `Database initialization error: ${err.message}`
+    });
+  }
 });
 
 // API Routes

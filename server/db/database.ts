@@ -21,19 +21,48 @@ try {
     dbFilePath = path.resolve(dbDir, 'kisan_mitra.sqlite');
   }
 } catch (e) {
-  // Fallback to tmp dir
   dbFilePath = path.join(os.tmpdir(), 'kisan_go.sqlite');
 }
 
 let sqlJsInstance: any = null;
 let rawDb: SqlJsDatabase | null = null;
 
+// Find WASM binary file across local directories
+function resolveWasmBinary(): string | undefined {
+  const candidates = [
+    path.join(process.cwd(), 'api', 'sql-wasm.wasm'),
+    path.join(process.cwd(), 'server', 'sql-wasm.wasm'),
+    path.join(process.cwd(), 'public', 'sql-wasm.wasm'),
+    path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm')
+  ];
+
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) {
+        return c;
+      }
+    } catch (e) {}
+  }
+  return undefined;
+}
+
 // Initialize SQL.js and load/create DB
 export async function getDb(): Promise<SqlJsDatabase> {
   if (rawDb) return rawDb;
 
   if (!sqlJsInstance) {
-    sqlJsInstance = await initSqlJs();
+    const wasmBinaryPath = resolveWasmBinary();
+    if (wasmBinaryPath) {
+      const buffer = fs.readFileSync(wasmBinaryPath);
+      const wasmBinary = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      sqlJsInstance = await initSqlJs({
+        wasmBinary
+      });
+    } else {
+      sqlJsInstance = await initSqlJs({
+        locateFile: (file: string) => `https://sql.js.org/dist/${file}`
+      });
+    }
   }
 
   try {
@@ -44,7 +73,7 @@ export async function getDb(): Promise<SqlJsDatabase> {
       rawDb = new sqlJsInstance.Database();
     }
   } catch (err) {
-    console.warn('Fallback to in-memory database:', err);
+    console.warn('Fallback to fresh in-memory database:', err);
     rawDb = new sqlJsInstance.Database();
   }
 
@@ -60,7 +89,7 @@ export function saveDbToFile() {
       const buffer = Buffer.from(data);
       fs.writeFileSync(dbFilePath, buffer);
     } catch (e) {
-      // If filesystem write fails on serverless, in-memory state remains intact
+      // Serverless in-memory persistence
     }
   }
 }
@@ -141,7 +170,7 @@ export const db = {
         rawDb.exec('BEGIN TRANSACTION;');
         inTxn = true;
       } catch (beginErr) {
-        // If a transaction is already active in SQLite, continue
+        // Continue if transaction active
       }
 
       try {
@@ -149,9 +178,7 @@ export const db = {
         if (inTxn) {
           try {
             rawDb.exec('COMMIT;');
-          } catch (commitErr) {
-            // commit error
-          }
+          } catch (commitErr) {}
         }
         saveDbToFile();
         return result;
@@ -159,9 +186,7 @@ export const db = {
         if (inTxn) {
           try {
             rawDb.exec('ROLLBACK;');
-          } catch (rollbackErr) {
-            // Ignore rollback failure
-          }
+          } catch (rollbackErr) {}
         }
         throw err;
       }
