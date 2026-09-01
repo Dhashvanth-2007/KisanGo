@@ -410,7 +410,7 @@ export const bookSlot = (req: Request, res: Response): void => {
 
     // Notification
     db.prepare(`
-      INSERT INTO notifications (id, recipient_id, recipient_type, title, message, type)
+      INSERT INTO notifications (id, user_id, user_type, title, message, type)
       VALUES (?, ?, 'farmer', ?, ?, 'slot_confirmation')
     `).run(
       `notif-${Date.now()}`,

@@ -401,7 +401,7 @@ export const notifyAffectedFarmersOfDelay = (req: Request, res: Response): void 
     const affectedFarmers = queueData.waitingQueue;
 
     const insertNotif = db.prepare(`
-      INSERT INTO notifications (id, recipient_id, recipient_type, title, message, type)
+      INSERT INTO notifications (id, user_id, user_type, title, message, type)
       VALUES (?, ?, 'farmer', ?, ?, 'queue_delay')
     `);
 
