@@ -191,6 +191,8 @@ export interface Booking {
     | 'Waiting'
     | 'Called'
     | 'Processing'
+    | 'Delayed'
+    | 'Skipped'
     | 'Weight Recorded'
     | 'Quality Checked'
     | 'Procurement Completed'
@@ -206,6 +208,16 @@ export interface Booking {
   slot_date?: string;
   slot_start?: string;
   slot_end?: string;
+  planned_start_time?: string;
+  planned_end_time?: string;
+  actual_start_time?: string;
+  actual_end_time?: string;
+  estimated_start_time?: string;
+  estimated_waiting_time?: number;
+  delay_minutes?: number;
+  expected_completion_time?: string;
+  elapsed_processing_mins?: number;
+  is_delayed?: boolean;
   center_name?: string;
   center_address?: string;
   center_latitude?: number;
@@ -240,6 +252,18 @@ export interface Booking {
   total_estimated_value?: number;
   master_window?: string;
   sub_slot?: string;
+}
+
+export interface DynamicQueueData {
+  centerId: string;
+  centerName: string;
+  currentDelayMins: number;
+  hasActiveDelay: boolean;
+  activeProcessingFarmer: Booking | null;
+  waitingQueue: Booking[];
+  completedToday: Booking[];
+  totalWaiting: number;
+  averageProcessingMins: number;
 }
 
 export interface DigitalToken {

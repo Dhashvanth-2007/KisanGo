@@ -441,8 +441,12 @@ export async function seedData() {
 
   // 9. Insert Demo Existing Bookings & Live Queue Items for Center B and Center A
   const insertBooking = db.prepare(`
-    INSERT INTO bookings (id, farmer_id, center_id, slot_id, crop_id, expected_quantity, priority_score, estimated_processing_mins, estimated_waiting_mins, travel_time_mins, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO bookings (
+      id, farmer_id, center_id, slot_id, crop_id, expected_quantity,
+      priority_score, estimated_processing_mins, estimated_waiting_mins,
+      travel_time_mins, planned_start_time, planned_end_time, actual_start_time,
+      estimated_start_time, delay_minutes, expected_completion_time, status, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertToken = db.prepare(`
@@ -455,7 +459,7 @@ export async function seedData() {
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-  // Existing booking for Farmer 2 at Center B
+  // Existing booking for Farmer 2 at Center B (Active in Bay, experiencing a 7-min delay)
   insertBooking.run(
     'book-demo-1',
     'farmer-2',
@@ -464,9 +468,15 @@ export async function seedData() {
     'crop-center-b-1',
     3000,
     88.5,
-    25,
-    10,
+    22,
+    0,
     35,
+    '09:15 AM',
+    '09:30 AM',
+    '09:15 AM',
+    '09:15 AM',
+    7,
+    '09:37 AM',
     'Processing',
     `${todayStr} 08:45:00`
   );
@@ -474,7 +484,7 @@ export async function seedData() {
   insertToken.run(
     'token-demo-1',
     'book-demo-1',
-    'KM-0418',
+    'FG-1041',
     1,
     'Called',
     '08:50 AM',
@@ -487,11 +497,11 @@ export async function seedData() {
     'book-demo-1',
     1,
     'Processing',
-    5,
+    7,
     `${todayStr} 09:35:00`
   );
 
-  // Existing booking for Farmer 3 at Center B
+  // Existing booking for Farmer 3 at Center B (Waiting in queue, updated start time pushed by +7 mins)
   insertBooking.run(
     'book-demo-2',
     'farmer-3',
@@ -501,16 +511,22 @@ export async function seedData() {
     2000,
     82.0,
     18,
-    15,
+    14,
     40,
-    'Waiting',
+    '09:30 AM',
+    '09:45 AM',
+    null,
+    '09:37 AM',
+    7,
+    null,
+    'Delayed',
     `${todayStr} 09:00:00`
   );
 
   insertToken.run(
     'token-demo-2',
     'book-demo-2',
-    'KM-0419',
+    'FG-1042',
     2,
     'Active',
     '09:15 AM',
@@ -523,7 +539,7 @@ export async function seedData() {
     'book-demo-2',
     2,
     'Waiting',
-    15,
+    14,
     `${todayStr} 09:35:00`
   );
 

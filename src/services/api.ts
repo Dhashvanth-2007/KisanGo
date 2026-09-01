@@ -206,6 +206,51 @@ export const api = {
     return handleResponse(res);
   },
 
+  async getDynamicQueue(centerId: string) {
+    const res = await fetch(`${BASE_URL}/centers/${centerId}/dynamic-queue`);
+    return handleResponse(res);
+  },
+
+  async startProcessingFarmer(bookingId: string) {
+    const res = await fetch(`${BASE_URL}/procurement/start-processing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId })
+    });
+    return handleResponse(res);
+  },
+
+  async updateExpectedCompletion(payload: {
+    bookingId: string;
+    addMinutes?: number;
+    expectedCompletionTime?: string;
+  }) {
+    const res = await fetch(`${BASE_URL}/procurement/update-completion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async skipFarmer(bookingId: string) {
+    const res = await fetch(`${BASE_URL}/procurement/skip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId })
+    });
+    return handleResponse(res);
+  },
+
+  async notifyDelayToFarmers(centerId: string, customMessage?: string) {
+    const res = await fetch(`${BASE_URL}/officer/notify-delay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ centerId, customMessage })
+    });
+    return handleResponse(res);
+  },
+
   // Officer Slot Management
   async getOfficerSlotSummary(centerId: string, date?: string) {
     const query = date ? `?centerId=${centerId}&date=${date}` : `?centerId=${centerId}`;

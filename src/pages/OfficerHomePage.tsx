@@ -125,11 +125,15 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
             />
           )}
 
-          {/* Today's Farmers Queue Table */}
+          {/* Today's Farmers Queue Table (Dynamic Queue & Delay Management) */}
           <TodayFarmersList
             farmers={dashboardData?.farmers || []}
+            centerId={centerId}
+            currentDelayMins={dashboardData?.currentDelayMins || 7}
+            activeProcessingFarmer={dashboardData?.activeProcessingFarmer || null}
             onProcessFarmer={handleStartProcessing}
             onVerifyFarmer={handleVerifyFarmer}
+            onRefresh={fetchDashboard}
           />
         </div>
       )}

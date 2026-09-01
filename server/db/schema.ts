@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS center_schedules (
   FOREIGN KEY (center_id) REFERENCES procurement_centers(id) ON DELETE CASCADE
 );
 
--- Bookings Table
+-- Bookings Table (with Dynamic Queue & Real-time Delay tracking)
 CREATE TABLE IF NOT EXISTS bookings (
   id TEXT PRIMARY KEY,
   farmer_id TEXT NOT NULL,
@@ -124,10 +124,17 @@ CREATE TABLE IF NOT EXISTS bookings (
   crop_id TEXT NOT NULL,
   expected_quantity REAL NOT NULL, -- in kg
   priority_score REAL DEFAULT 0,
-  estimated_processing_mins INTEGER DEFAULT 20,
+  estimated_processing_mins INTEGER DEFAULT 15,
   estimated_waiting_mins INTEGER DEFAULT 15,
   travel_time_mins INTEGER DEFAULT 20,
-  status TEXT NOT NULL DEFAULT 'Slot Booked', -- 'Slot Booked', 'Traveling', 'Arrived', 'Waiting', 'Called', 'Processing', 'Weight Recorded', 'Quality Checked', 'Procurement Completed', 'Bill Generated', 'Payment Processing', 'Payment Completed', 'Cancelled'
+  planned_start_time TEXT, -- e.g. '10:00 AM'
+  planned_end_time TEXT, -- e.g. '10:15 AM'
+  actual_start_time TEXT, -- recorded when processing begins
+  actual_end_time TEXT, -- recorded when completed
+  estimated_start_time TEXT, -- dynamically recalculated with delay propagation
+  delay_minutes INTEGER DEFAULT 0, -- propagated delay in minutes
+  expected_completion_time TEXT, -- officer-adjusted expected completion
+  status TEXT NOT NULL DEFAULT 'Slot Booked', -- 'Slot Booked', 'Traveling', 'Arrived', 'Waiting', 'Called', 'Processing', 'Delayed', 'Weight Recorded', 'Quality Checked', 'Procurement Completed', 'Bill Generated', 'Payment Processing', 'Payment Completed', 'Cancelled', 'Skipped'
   crops_breakdown TEXT, -- JSON array of selected crops and quantities
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (farmer_id) REFERENCES farmers(id),

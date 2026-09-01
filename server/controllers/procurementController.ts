@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { db } from '../db/database.js';
+import { recalculateCenterDynamicQueue } from './queueController.js';
 
 export const getOfficerDashboardData = (req: Request, res: Response): void => {
   try {
-    const { centerId } = req.params;
+    const centerId = req.params.centerId as string;
 
     const center = db.prepare('SELECT * FROM procurement_centers WHERE id = ?').get(centerId) as any;
     if (!center) {
@@ -12,6 +13,9 @@ export const getOfficerDashboardData = (req: Request, res: Response): void => {
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
+
+    // Dynamic queue recalculation
+    const queueData = recalculateCenterDynamicQueue(centerId);
 
     // Today's total bookings
     const bookings = db
@@ -51,10 +55,11 @@ export const getOfficerDashboardData = (req: Request, res: Response): void => {
         CASE 
           WHEN b.status = 'Processing' THEN 1
           WHEN b.status = 'Called' THEN 2
-          WHEN b.status = 'Waiting' THEN 3
-          WHEN b.status = 'Slot Booked' THEN 4
-          WHEN b.status LIKE '%Procurement Completed%' OR b.status LIKE '%Bill%' OR b.status LIKE '%Payment%' THEN 5
-          ELSE 6
+          WHEN b.status = 'Delayed' THEN 3
+          WHEN b.status = 'Waiting' THEN 4
+          WHEN b.status = 'Slot Booked' THEN 5
+          WHEN b.status LIKE '%Procurement Completed%' OR b.status LIKE '%Bill%' OR b.status LIKE '%Payment%' THEN 6
+          ELSE 7
         END,
         s.start_time ASC
     `
@@ -63,7 +68,7 @@ export const getOfficerDashboardData = (req: Request, res: Response): void => {
 
     // Metrics
     const totalFarmers = bookings.length;
-    const waitingFarmers = bookings.filter((b) => b.status === 'Waiting' || b.status === 'Slot Booked' || b.status === 'Called').length;
+    const waitingFarmers = bookings.filter((b) => b.status === 'Waiting' || b.status === 'Delayed' || b.status === 'Slot Booked' || b.status === 'Called').length;
     const currentlyProcessing = bookings.filter((b) => b.status === 'Processing' || b.status === 'Weight Recorded' || b.status === 'Quality Checked').length;
     const completedFarmers = bookings.filter((b) => b.status.includes('Completed') || b.status.includes('Payment') || b.status.includes('Bill')).length;
     const totalQuantityKg = bookings
@@ -74,6 +79,9 @@ export const getOfficerDashboardData = (req: Request, res: Response): void => {
       success: true,
       data: {
         center,
+        currentDelayMins: queueData.currentDelayMins,
+        hasActiveDelay: queueData.hasActiveDelay,
+        activeProcessingFarmer: queueData.activeProcessingFarmer,
         stats: {
           totalFarmers,
           waitingFarmers,
@@ -194,9 +202,10 @@ export const recordWeightAndQuality = (req: Request, res: Response): void => {
       `).run(payId, billId, booking.farmer_id, netAmount, 'Payment Processing', 'Direct Benefit Transfer (DBT)', utrRef, null);
 
       // 4. Update Booking and Token and Queue status
-      db.prepare("UPDATE bookings SET status = 'Procurement Completed' WHERE id = ?").run(bookingId);
+      const completedTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      db.prepare("UPDATE bookings SET status = 'Procurement Completed', actual_end_time = ?, delay_minutes = 0 WHERE id = ?").run(completedTime, bookingId);
       db.prepare("UPDATE tokens SET status = 'Completed' WHERE booking_id = ?").run(bookingId);
-      db.prepare("UPDATE queue SET status = 'Completed' WHERE booking_id = ?").run(bookingId);
+      db.prepare("DELETE FROM queue WHERE booking_id = ?").run(bookingId);
 
       // 5. Notify farmer
       const notifId = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;

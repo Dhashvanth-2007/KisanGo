@@ -25,7 +25,12 @@ import {
 } from '../controllers/slotController.js';
 import {
   getLiveQueue,
-  updateQueueItemStatus
+  getDynamicQueue,
+  updateQueueItemStatus,
+  startFarmerProcessing,
+  updateExpectedCompletion,
+  skipFarmer,
+  notifyAffectedFarmersOfDelay
 } from '../controllers/queueController.js';
 import {
   getOfficerDashboardData,
@@ -78,9 +83,14 @@ router.post('/officer/slots/release', releaseReservedSlots);
 router.post('/officer/slots/toggle', toggleSlotStatus);
 router.post('/officer/schedule/config', updateCenterScheduleConfig);
 
-// Queue routes
+// Dynamic Queue & Delay routes
 router.get('/centers/:centerId/queue', getLiveQueue);
+router.get('/centers/:centerId/dynamic-queue', getDynamicQueue);
 router.put('/queue/:id/status', updateQueueItemStatus);
+router.post('/procurement/start-processing', startFarmerProcessing);
+router.post('/procurement/update-completion', updateExpectedCompletion);
+router.post('/procurement/skip', skipFarmer);
+router.post('/officer/notify-delay', notifyAffectedFarmersOfDelay);
 
 // Procurement & Officer routes
 router.get('/officer/dashboard/:centerId', getOfficerDashboardData);

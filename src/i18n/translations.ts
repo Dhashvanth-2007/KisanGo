@@ -186,7 +186,13 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     choose_slot_subtitle: 'Select a convenient 15-minute window to avoid congestion and wait times',
     master_window: '1-Hour Window',
     sub_slots_label: '15-Minute Sub-Slots',
-    reserved_by_centre: 'Reserved by Centre'
+    reserved_by_centre: 'Reserved by Centre',
+    queue_delay_detected: 'Queue Delay Detected',
+    updated_estimated_time: 'Updated Estimated Start',
+    planned_slot: 'Planned Sub-Slot',
+    delay_reassurance_msg: 'Your procurement centre is currently experiencing a delay. Your booking is still confirmed. Your estimated processing time has been updated.',
+    keep_booking: 'Keep Current Booking',
+    emergency_slot_label: 'Emergency Reserved'
   },
 
   Tamil: {
@@ -374,7 +380,13 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     choose_slot_subtitle: 'நெரிசலைத் தவிர்க்க வசதியான 15-நிமிட நேரத்தைத் தேர்வு செய்யுங்கள்',
     master_window: '1-மணி நேர சாளரம்',
     sub_slots_label: '15-நிமிட துணை இடங்கள்',
-    reserved_by_centre: 'மையத்தால் ஒதுக்கப்பட்டது'
+    reserved_by_centre: 'மையத்தால் ஒதுக்கப்பட்டது',
+    queue_delay_detected: 'வரிசை தாமதம் கண்டறியப்பட்டது',
+    updated_estimated_time: 'புதுப்பிக்கப்பட்ட எதிர்பார்க்கப்படும் நேரம்',
+    planned_slot: 'திட்டமிடப்பட்ட துணை நேரம்',
+    delay_reassurance_msg: 'கொள்முதல் மையத்தில் தற்போது தாமதம் உள்ளது. உங்கள் முன்பதிவு இன்னும் உறுதி செய்யப்பட்டுள்ளது. உங்கள் எதிர்பார்க்கப்படும் நேரம் புதுப்பிக்கப்பட்டுள்ளது.',
+    keep_booking: 'தற்போதைய முன்பதிவைத் தொடரவும்',
+    emergency_slot_label: 'அவசர ஒதுக்கீடு'
   },
 
   Hindi: {
@@ -562,7 +574,13 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     choose_slot_subtitle: 'भीड़ से बचने के लिए सुविधाजनक 15-मिनट का समय चुनें',
     master_window: '1-घंटे की विंडो',
     sub_slots_label: '15-मिनट उप-स्लॉट',
-    reserved_by_centre: 'केंद्र द्वारा आरक्षित'
+    reserved_by_centre: 'केंद्र द्वारा आरक्षित',
+    queue_delay_detected: 'कतार में देरी का पता चला',
+    updated_estimated_time: 'अद्यतन अनुमानित समय',
+    planned_slot: 'नियोजित उप-स्लॉट',
+    delay_reassurance_msg: 'खरीद केंद्र में वर्तमान में देरी हो रही है। आपकी बुकिंग अभी भी पुष्ट है। आपका अनुमानित प्रसंस्करण समय अपडेट कर दिया गया है।',
+    keep_booking: 'वर्तमान बुकिंग जारी रखें',
+    emergency_slot_label: 'आपातकालीन आरक्षित'
   },
 
   Telugu: {
@@ -750,7 +768,13 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     choose_slot_subtitle: 'రద్దీని నివారించడానికి సౌకర్యవంతమైన 15-నిమిషాల సమయాన్ని ఎంచుకోండి',
     master_window: '1-గంట విండో',
     sub_slots_label: '15-నిమిషాల ఉప-స్లాట్లు',
-    reserved_by_centre: 'కేంద్రం ద్వారా రిజర్వ్ చేయబడింది'
+    reserved_by_centre: 'కేంద్రం ద్వారా రిజర్వ్ చేయబడింది',
+    queue_delay_detected: 'క్యూ ఆలస్యం గుర్తించబడింది',
+    updated_estimated_time: 'నవీకరించబడిన అంచనా సమయం',
+    planned_slot: 'ప్రణాళికాబద్ధమైన ఉప-స్లాట్',
+    delay_reassurance_msg: 'కొనుగోలు కేంద్రంలో ప్రస్తుతం ఆలస్యం జరుగుతోంది. మీ బుకింగ్ ఇప్పటికీ నిర్ధారించబడింది. మీ అంచనా ప్రాసెసింగ్ సమయం నవీకరించబడింది.',
+    keep_booking: 'ప్రస్తుత బుకింగ్‌ను కొనసాగించండి',
+    emergency_slot_label: 'అత్యవసర రిజర్వ్'
   },
 
   Malayalam: {
@@ -938,6 +962,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     choose_slot_subtitle: 'തിരക്ക് ഒഴിവാക്കാൻ സൗകര്യപ്രദമായ 15-മിനിറ്റ് സമയം തിരഞ്ഞെടുക്കുക',
     master_window: '1-മണിക്കൂർ വിൻഡോ',
     sub_slots_label: '15-മിനിറ്റ് സബ് സ്ലോട്ടുകൾ',
-    reserved_by_centre: 'കേന്ദ്രം മാറ്റിവെച്ചത്'
+    reserved_by_centre: 'കേന്ദ്രം മാറ്റിവെച്ചത്',
+    queue_delay_detected: 'ക്യൂ കാലതാമസം കണ്ടെത്തി',
+    updated_estimated_time: 'പുതുക്കിയ പ്രതീക്ഷിക്കുന്ന സമയം',
+    planned_slot: 'ആസൂത്രണം ചെയ്ത സബ്-സ്ലോട്ട്',
+    delay_reassurance_msg: 'സംഭരണ കേന്ദ്രത്തിൽ നിലവിൽ കാലതാമസമുണ്ട്. നിങ്ങളുടെ ബുക്കിംഗ് ഇപ്പോഴും സ്ഥിരീകരിച്ചിരിക്കുന്നു. നിങ്ങളുടെ പ്രതീക്ഷിക്കുന്ന പ്രോസസ്സിംഗ് സമയം പുതുക്കിയിട്ടുണ്ട്.',
+    keep_booking: 'നിലവിലെ ബുക്കിംഗ് തുടരുക',
+    emergency_slot_label: 'അടിയന്തര റിസർവ്വ്'
   }
 };
