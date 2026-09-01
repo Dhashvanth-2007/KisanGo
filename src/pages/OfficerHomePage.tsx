@@ -5,10 +5,11 @@ import { TodayFarmersList } from '../components/officer/TodayFarmersList';
 import { ProcessFarmerModal } from '../components/officer/ProcessFarmerModal';
 import { CenterSettingsModal } from '../components/officer/CenterSettingsModal';
 import { OfficerSlotManagement } from '../components/officer/OfficerSlotManagement';
+import { OfficerComplaintsView } from '../components/officer/OfficerComplaintsView';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
-import { Users, Layers, Sliders, Calendar } from 'lucide-react';
+import { Users, Layers, ShieldAlert, Sliders, Calendar } from 'lucide-react';
 
 interface OfficerHomePageProps {
   onNavigateToProfile?: () => void;
@@ -19,7 +20,7 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
   const { showToast } = useToast();
   const officer = user as Officer;
 
-  const [activeTab, setActiveTab] = useState<'operations' | 'slots'>('operations');
+  const [activeTab, setActiveTab] = useState<'operations' | 'slots' | 'complaints'>('operations');
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [selectedFarmer, setSelectedFarmer] = useState<Booking | null>(null);
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
@@ -68,12 +69,12 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 pb-24">
       {/* Officer View Mode Switcher Tab Bar */}
-      <div className="flex items-center justify-between bg-white p-2 rounded-3xl border border-gray-200 shadow-2xs">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-2 rounded-3xl border border-gray-200 shadow-2xs gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           <button
             type="button"
             onClick={() => setActiveTab('operations')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
               activeTab === 'operations'
                 ? 'bg-km-primary text-white shadow-md'
                 : 'text-gray-600 hover:bg-gray-100 hover:text-km-textPrimary'
@@ -86,18 +87,31 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
           <button
             type="button"
             onClick={() => setActiveTab('slots')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
               activeTab === 'slots'
                 ? 'bg-km-primary text-white shadow-md'
                 : 'text-gray-600 hover:bg-gray-100 hover:text-km-textPrimary'
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>1-Hour Slot & Schedule Management</span>
+            <span>1-Hour Slot Schedule</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('complaints')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
+              activeTab === 'complaints'
+                ? 'bg-rose-700 text-white shadow-md'
+                : 'text-rose-700 hover:bg-rose-50'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" />
+            <span>Center Complaints & Grievances</span>
           </button>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-500 pr-2">
+        <div className="hidden md:flex items-center gap-2 text-xs font-bold text-gray-500 pr-2">
           <span>Center: <strong>{officer?.assigned_center_name || 'Kilpennathur DPC'}</strong></span>
         </div>
       </div>
@@ -141,6 +155,11 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
       {/* TAB 2: 1-HOUR SLOT & SCHEDULE MANAGEMENT */}
       {activeTab === 'slots' && (
         <OfficerSlotManagement officer={officer} centerId={centerId} />
+      )}
+
+      {/* TAB 3: CENTER COMPLAINTS & GRIEVANCE REDRESSAL */}
+      {activeTab === 'complaints' && (
+        <OfficerComplaintsView officer={officer} centerId={centerId} />
       )}
 
       {/* PROCESS FARMER MODAL */}

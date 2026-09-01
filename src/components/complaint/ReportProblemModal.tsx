@@ -1,21 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
-import { AlertCircle, Camera, Mic, Upload, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { ProcurementCenter } from '../../types';
+import {
+  AlertCircle,
+  Camera,
+  Mic,
+  Upload,
+  CheckCircle2,
+  ShieldAlert,
+  Building2,
+  MapPin
+} from 'lucide-react';
 
 interface ReportProblemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmitted?: () => void;
+  defaultCenterId?: string;
 }
 
 export const ReportProblemModal: React.FC<ReportProblemModalProps> = ({
   isOpen,
   onClose,
-  onSubmitted
+  onSubmitted,
+  defaultCenterId
 }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -31,11 +43,30 @@ export const ReportProblemModal: React.FC<ReportProblemModalProps> = ({
     'Other'
   ];
 
+  const [centers, setCenters] = useState<ProcurementCenter[]>([]);
+  const [selectedCenterId, setSelectedCenterId] = useState<string>(defaultCenterId || '');
   const [selectedCategory, setSelectedCategory] = useState(categories[0]);
   const [description, setDescription] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getCenters()
+        .then((res: { success: boolean; data: ProcurementCenter[] }) => {
+          if (res.success && res.data) {
+            setCenters(res.data);
+            if (!selectedCenterId && res.data.length > 0) {
+              setSelectedCenterId(defaultCenterId || res.data[0].id);
+            }
+          }
+        })
+        .catch((e: any) => console.warn('Failed to load centers for complaint:', e));
+    }
+  }, [isOpen, defaultCenterId]);
+
+  const selectedCenter = centers.find((c) => c.id === selectedCenterId);
 
   const handleSubmit = async () => {
     if (!description.trim()) {
@@ -47,6 +78,7 @@ export const ReportProblemModal: React.FC<ReportProblemModalProps> = ({
     try {
       const payload = {
         farmerId: user?.id || 'farmer-1',
+        centerId: selectedCenterId || (centers[0]?.id ?? 'center-b'),
         category: selectedCategory,
         description,
         evidence: evidenceUrl ? [{ url: evidenceUrl, type: 'photo', caption: 'Farmer evidence photo' }] : []
@@ -54,7 +86,7 @@ export const ReportProblemModal: React.FC<ReportProblemModalProps> = ({
 
       const res = await api.submitComplaint(payload);
       if (res.success) {
-        showToast('Complaint submitted successfully! Tracking ID generated.', 'success');
+        showToast(`Complaint submitted to ${selectedCenter?.name || 'Center'}! Tracking ID generated.`, 'success');
         setDescription('');
         setEvidenceUrl('');
         setPreviewMode(false);
@@ -84,7 +116,30 @@ export const ReportProblemModal: React.FC<ReportProblemModalProps> = ({
       <div className="space-y-4">
         {!previewMode ? (
           <>
-            {/* Category Selector Chips */}
+            {/* 1. Procurement Center Selector */}
+            <div className="space-y-1.5 bg-gray-50/90 p-3 rounded-2xl border border-gray-200">
+              <label className="block text-xs font-bold text-km-textPrimary flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-km-primary" />
+                <span>Select Procurement Center</span>
+              </label>
+              <select
+                value={selectedCenterId}
+                onChange={(e) => setSelectedCenterId(e.target.value)}
+                className="w-full p-2.5 text-xs font-semibold rounded-xl border border-gray-300 bg-white text-km-textPrimary focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                {centers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.address.split(',')[0]})
+                  </option>
+                ))}
+              </select>
+              <span className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3 h-3 text-gray-400" />
+                <span>Complaint will be directly routed to this center's officer dashboard</span>
+              </span>
+            </div>
+
+            {/* 2. Category Selector Chips */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-km-textPrimary">{t('complaint_category')}</label>
               <div className="flex flex-wrap gap-1.5">
@@ -105,19 +160,19 @@ export const ReportProblemModal: React.FC<ReportProblemModalProps> = ({
               </div>
             </div>
 
-            {/* Description Textarea */}
+            {/* 3. Description Textarea */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-km-textPrimary">{t('complaint_desc')}</label>
               <textarea
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Explain what happened at the center or with your slot/weight..."
+                placeholder="Explain what happened at the center or with your slot/weight/payment..."
                 className="w-full p-3 text-xs rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
               />
             </div>
 
-            {/* Evidence Attachment */}
+            {/* 4. Evidence Attachment */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-km-textPrimary">{t('complaint_evidence')}</label>
               <div className="flex items-center gap-2">
@@ -163,6 +218,7 @@ export const ReportProblemModal: React.FC<ReportProblemModalProps> = ({
           <div className="space-y-4">
             <div className="bg-rose-50 p-4 rounded-2xl border border-rose-200 space-y-2 text-xs">
               <span className="font-bold text-rose-900 block uppercase text-[10px]">Complaint Summary</span>
+              <p><strong>Procurement Center:</strong> {selectedCenter?.name || 'Selected Center'}</p>
               <p><strong>Category:</strong> {selectedCategory}</p>
               <p><strong>Description:</strong> {description}</p>
               {evidenceUrl && (
