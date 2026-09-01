@@ -280,7 +280,7 @@ export const bookSlot = (req: Request, res: Response): void => {
       existingFarmer = db.prepare('SELECT * FROM farmers WHERE id = ?').get(farmerId) as any;
     }
 
-    // Check if farmer already has an active booking
+    // If farmer already has an uncompleted active booking, cancel and replace it seamlessly
     const activeBooking = db
       .prepare(`
         SELECT b.*, t.token_number, t.status as token_status
@@ -291,11 +291,16 @@ export const bookSlot = (req: Request, res: Response): void => {
       .get(farmerId) as any;
 
     if (activeBooking) {
-      res.status(400).json({
-        success: false,
-        message: `You already have an active booking (${activeBooking.token_number || 'Token Active'}) for today.`
-      });
-      return;
+      // Release old slot capacity and supersede old booking
+      db.prepare(`
+        UPDATE slots 
+        SET booked_count = MAX(0, booked_count - 1),
+            status = CASE WHEN status = 'Booked' THEN 'Available' ELSE status END
+        WHERE id = ?
+      `).run(activeBooking.slot_id);
+      db.prepare("UPDATE bookings SET status = 'Cancelled' WHERE id = ?").run(activeBooking.id);
+      db.prepare("UPDATE tokens SET status = 'Cancelled' WHERE booking_id = ?").run(activeBooking.id);
+      db.prepare("DELETE FROM queue WHERE booking_id = ?").run(activeBooking.id);
     }
 
     // Atomically book the 15-minute sub-slot
