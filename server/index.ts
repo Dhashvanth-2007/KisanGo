@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { app, ensureInitialized } from './app.js';
 
 const PORT = process.env.PORT || 3001;

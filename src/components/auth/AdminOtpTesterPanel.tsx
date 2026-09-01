@@ -22,29 +22,30 @@ export const AdminOtpTesterPanel: React.FC<AdminOtpTesterPanelProps> = ({
   onAutoFillOtp,
   onOtpGenerated
 }) => {
-  const isHackathonMode =
-    import.meta.env.VITE_HACKATHON_OTP_MODE === 'true' ||
-    import.meta.env.MODE === 'development';
-
-  if (!isHackathonMode) {
-    return null;
-  }
-
   const [otpData, setOtpData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [remainingTime, setRemainingTime] = useState<number>(0);
   const [isExpanded, setIsExpanded] = useState(true);
 
+  // Fallback to true in local development if backend hasn't responded yet
+  const [isHackathonMode, setIsHackathonMode] = useState<boolean>(
+    import.meta.env.VITE_HACKATHON_OTP_MODE === 'true' || 
+    import.meta.env.MODE === 'development'
+  );
+
   const fetchStatus = async () => {
     try {
       setLoading(true);
       const res = await api.getAdminOtpStatus();
-      if (res.success) {
+      if (res.success || res.hackathonMode) {
         setOtpData(res);
+        setIsHackathonMode(true);
         if (res.remainingSeconds) {
           setRemainingTime(res.remainingSeconds);
         }
+      } else {
+        setIsHackathonMode(false);
       }
     } catch (e) {
       console.warn('Admin OTP status fetch error:', e);
@@ -85,7 +86,7 @@ export const AdminOtpTesterPanel: React.FC<AdminOtpTesterPanelProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  if (!otpData) {
+  if (!isHackathonMode) {
     return null;
   }
 
@@ -138,12 +139,12 @@ export const AdminOtpTesterPanel: React.FC<AdminOtpTesterPanelProps> = ({
           <div className="flex items-center justify-between bg-black/40 px-3 py-2 rounded-xl border border-white/5">
             <span className="text-[11px] text-gray-400">Admin Phone:</span>
             <span className="font-mono font-bold text-amber-300">
-              {otpData.maskedPhone || '+91 ******3210'}
+              {otpData?.maskedPhone || '+91 ******3210'}
             </span>
           </div>
 
           {/* Active OTP Card */}
-          {otpData.hasActiveOtp && otpData.otp && otpData.otp !== 'EXPIRED' ? (
+          {otpData?.hasActiveOtp && otpData?.otp && otpData?.otp !== 'EXPIRED' ? (
             <div className="bg-amber-500/10 border border-amber-400/40 p-3 rounded-2xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold text-amber-400">
@@ -187,15 +188,15 @@ export const AdminOtpTesterPanel: React.FC<AdminOtpTesterPanelProps> = ({
               {/* Meta details */}
               <div className="flex items-center justify-between text-[10px] text-gray-400 px-1">
                 <span>
-                  Generated: {new Date(otpData.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  Generated: {otpData.createdAt ? new Date(otpData.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
                 </span>
-                <span>Attempts: {otpData.attemptsRemaining}/5 left</span>
+                <span>Attempts: {otpData.attemptsRemaining ?? 5}/5 left</span>
               </div>
             </div>
           ) : (
             <div className="bg-black/30 border border-white/5 p-3 rounded-2xl text-center space-y-1">
               <span className="text-amber-400/90 font-bold block text-xs">
-                {otpData.isExpired ? 'OTP Expired' : 'No Active Admin OTP'}
+                {otpData?.isExpired ? 'OTP Expired' : 'No Active Admin OTP'}
               </span>
               <p className="text-[11px] text-gray-400">
                 Enter the Admin Phone number above and click <strong>"Send OTP"</strong> to generate a cryptographically secure 6-digit code on the server.
