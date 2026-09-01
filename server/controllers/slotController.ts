@@ -371,8 +371,9 @@ export const bookSlot = (req: Request, res: Response): void => {
       INSERT INTO bookings (
         id, farmer_id, center_id, slot_id, crop_id, expected_quantity,
         priority_score, estimated_processing_mins, estimated_waiting_mins,
-        travel_time_mins, status, crops_breakdown, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Slot Booked', ?, CURRENT_TIMESTAMP)
+        travel_time_mins, planned_start_time, planned_end_time, estimated_start_time,
+        delay_minutes, status, crops_breakdown, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'Slot Booked', ?, CURRENT_TIMESTAMP)
     `).run(
       bookingId,
       farmerId,
@@ -384,6 +385,9 @@ export const bookSlot = (req: Request, res: Response): void => {
       processingMins,
       waitingMins,
       travelTime,
+      targetSlot.start_time,
+      targetSlot.end_time,
+      targetSlot.start_time,
       cropsBreakdownJson
     );
 

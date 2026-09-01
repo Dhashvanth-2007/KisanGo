@@ -571,6 +571,12 @@ export async function seedData() {
     20,
     10,
     40,
+    '09:00 AM',
+    '09:15 AM',
+    '09:00 AM',
+    '09:00 AM',
+    0,
+    '09:15 AM',
     'Payment Completed',
     '2026-08-25 09:00:00'
   );
