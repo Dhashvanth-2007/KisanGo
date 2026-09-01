@@ -39,6 +39,8 @@ export const api = {
     state?: string;
     latitude?: number;
     longitude?: number;
+    firebaseUid?: string;
+    isFirebaseVerified?: boolean;
   }) {
     const res = await fetch(`${BASE_URL}/auth/farmer/verify-otp`, {
       method: 'POST',

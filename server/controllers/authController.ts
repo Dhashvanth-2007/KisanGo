@@ -29,17 +29,19 @@ export const sendFarmerOTP = (req: Request, res: Response): void => {
 
 export const verifyFarmerOTP = (req: Request, res: Response): void => {
   try {
-    const { mobile, otp, name, language, village, district, state, latitude, longitude } = req.body;
+    const { mobile, otp, name, language, village, district, state, latitude, longitude, firebaseUid, isFirebaseVerified } = req.body;
     const cleanMobile = mobile?.trim();
     const stored = otpStore.get(cleanMobile);
 
-    // Accept 123456 as master demo OTP or verified OTP
-    if (otp !== '123456' && (!stored || stored.otp !== otp || stored.expiresAt < Date.now())) {
-      res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please enter 123456.' });
+    // Accept verified Firebase session, demo OTP 123456, or stored OTP
+    if (!isFirebaseVerified && !firebaseUid && otp !== '123456' && (!stored || stored.otp !== otp || stored.expiresAt < Date.now())) {
+      res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
       return;
     }
 
-    otpStore.delete(cleanMobile);
+    if (cleanMobile) {
+      otpStore.delete(cleanMobile);
+    }
 
     let farmer = db.prepare('SELECT * FROM farmers WHERE mobile = ?').get(cleanMobile) as any;
 

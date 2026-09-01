@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
-import { Sprout, Phone, ShieldCheck, ArrowLeft, ArrowRight, User } from 'lucide-react';
+import {
+  initRecaptchaVerifier,
+  sendFirebasePhoneOTP,
+  confirmFirebaseOTP,
+  parseFirebasePhoneAuthError,
+  formatToE164
+} from '../services/firebase';
+import { ConfirmationResult } from 'firebase/auth';
+import { Sprout, Phone, ShieldCheck, ArrowLeft, ArrowRight, User, RotateCcw } from 'lucide-react';
 
 interface FarmerAuthPageProps {
   onBack: () => void;
@@ -16,11 +24,34 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
 
   const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
   const [mobile, setMobile] = useState('9876543210');
-  const [otp, setOtp] = useState('123456');
+  const [otp, setOtp] = useState('');
   const [name, setName] = useState('Ravi Kumar');
   const [village, setVillage] = useState('Vengikkal Village');
   const [district, setDistrict] = useState('Tiruvannamalai');
   const [isLoading, setIsLoading] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
+  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
+
+  // 60-Second Resend Countdown Timer
+  useEffect(() => {
+    let timer: any = null;
+    if (step === 'otp' && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [step, countdown]);
 
   const handleMobileChange = (val: string) => {
     const clean = val.replace(/\D/g, '');
@@ -34,54 +65,114 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
     }
   };
 
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!/^\d{10}$/.test(mobile.trim())) {
-      showToast('Please enter a valid 10-digit mobile number', 'warning');
+  const handleSendOTP = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    const cleanMobile = mobile.trim().replace(/\D/g, '');
+    if (cleanMobile.length !== 10) {
+      showToast('Please enter a valid 10-digit Indian mobile number', 'warning');
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await api.sendFarmerOTP(mobile);
-      if (res.success) {
-        showToast(res.message, 'success');
-        if (res.demoOtp) {
-          setOtp(res.demoOtp);
-        }
-        setStep('otp');
-      } else {
-        showToast(res.message, 'error');
-      }
+      // 1. Initialize Firebase RecaptchaVerifier
+      const verifier = initRecaptchaVerifier('recaptcha-container', () => {
+        showToast('reCAPTCHA expired. Please try sending OTP again.', 'warning');
+      });
+
+      // 2. Call Firebase signInWithPhoneNumber (E.164: +91XXXXXXXXXX)
+      const confirmation = await sendFirebasePhoneOTP(cleanMobile, verifier);
+      confirmationResultRef.current = confirmation;
+
+      showToast(`OTP sent successfully to +91 ${cleanMobile}`, 'success');
+      setCountdown(60);
+      setCanResend(false);
+      setOtp('');
+      setStep('otp');
     } catch (err: any) {
-      showToast(err.message || 'Failed to send OTP', 'error');
+      console.error('Firebase Phone Auth Error:', err);
+      const friendlyMsg = parseFirebasePhoneAuthError(err);
+      showToast(friendlyMsg, 'error');
+
+      // If online Firebase fails due to quota or test domain fallback, trigger local verification gracefully
+      try {
+        const fallbackRes = await api.sendFarmerOTP(cleanMobile);
+        if (fallbackRes.success) {
+          if (fallbackRes.demoOtp) {
+            setOtp(fallbackRes.demoOtp);
+          }
+          setStep('otp');
+          setCountdown(60);
+          setCanResend(false);
+        }
+      } catch (fallbackErr) {
+        // silent
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleResendOTP = async () => {
+    if (!canResend || isLoading) return;
+    await handleSendOTP();
+  };
+
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const cleanMobile = mobile.trim().replace(/\D/g, '');
+    const cleanOtp = otp.trim();
+
+    if (cleanOtp.length < 6) {
+      showToast('Please enter the full 6-digit verification code', 'warning');
+      return;
+    }
+
     setIsLoading(true);
     try {
+      let firebaseUid: string | undefined = undefined;
+
+      // 1. Verify OTP with Firebase if confirmationResult is active
+      if (confirmationResultRef.current) {
+        try {
+          const userCredential = await confirmFirebaseOTP(confirmationResultRef.current, cleanOtp);
+          if (userCredential && userCredential.user) {
+            firebaseUid = userCredential.user.uid;
+          }
+        } catch (firebaseErr: any) {
+          console.warn('Firebase confirmation error:', firebaseErr);
+          const errMessage = parseFirebasePhoneAuthError(firebaseErr);
+          showToast(errMessage, 'error');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // 2. Complete KisanGo Backend Profile & Session Onboarding
       const res = await api.verifyFarmerOTP({
-        mobile,
-        otp,
+        mobile: cleanMobile,
+        otp: cleanOtp,
         name: name.trim() || undefined,
         language,
         village: village.trim() || undefined,
         district: district.trim() || 'Tiruvannamalai',
-        state: 'Tamil Nadu'
+        state: 'Tamil Nadu',
+        firebaseUid,
+        isFirebaseVerified: Boolean(firebaseUid)
       });
 
       if (res.success && res.user) {
         showToast(`Welcome, ${res.user.name}!`, 'success');
         loginAsFarmer(res.user, res.token);
       } else {
-        showToast(res.message || 'Invalid OTP', 'error');
+        showToast(res.message || 'Invalid verification code', 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Verification failed', 'error');
+      console.error('Verify OTP Error:', err);
+      const friendlyMsg = parseFirebasePhoneAuthError(err);
+      showToast(friendlyMsg || 'Verification failed. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +203,9 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
           <form onSubmit={handleSendOTP} className="space-y-4">
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-km-textPrimary">{t('enter_mobile')}</h2>
-              <p className="text-xs text-km-textSecondary">We will send a 6-digit verification code</p>
+              <p className="text-xs text-km-textSecondary">
+                Enter your 10-digit mobile number for Firebase OTP verification
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -132,12 +225,15 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
               </div>
             </div>
 
+            {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
+            <div id="recaptcha-container" />
+
             <button
               type="submit"
               disabled={isLoading || mobile.length !== 10}
               className="w-full py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-800/20 transition-all disabled:opacity-50"
             >
-              <span>{isLoading ? 'Sending...' : t('send_otp')}</span>
+              <span>{isLoading ? 'Sending OTP...' : t('send_otp')}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -160,21 +256,42 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-km-textPrimary">{t('verify_otp')}</h2>
               <p className="text-xs text-km-textSecondary">
-                Enter code sent to +91 {mobile} ({t('demo_otp_hint')})
+                Enter the 6-digit verification code sent to +91 {mobile}
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-km-textPrimary">{t('enter_otp')}</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-km-textPrimary">{t('enter_otp')}</label>
+                {/* Resend OTP Button with 60-Second Countdown */}
+                <button
+                  type="button"
+                  onClick={handleResendOTP}
+                  disabled={!canResend || isLoading}
+                  className={`text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                    canResend
+                      ? 'text-km-primary hover:underline'
+                      : 'text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>{canResend ? 'Resend OTP' : `Resend in ${countdown}s`}</span>
+                </button>
+              </div>
+
               <input
                 type="text"
                 maxLength={6}
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center text-lg font-black tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-km-primary"
+                autoFocus
+                className="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center text-xl font-black tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-km-primary"
               />
             </div>
+
+            {/* Invisible reCAPTCHA container for Resend */}
+            <div id="recaptcha-container" />
 
             {/* Profile Fields on Registration / Login */}
             <div className="space-y-2 pt-1 border-t border-gray-100">
@@ -220,15 +337,18 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
             <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setStep('mobile')}
-                className="w-1/3 py-3 border border-gray-200 rounded-2xl text-xs font-bold text-gray-600 hover:bg-gray-50"
+                onClick={() => {
+                  setStep('mobile');
+                  setOtp('');
+                }}
+                className="w-1/3 py-3 border border-gray-200 rounded-2xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Change Phone
               </button>
               <button
                 type="submit"
-                disabled={isLoading || otp.length < 4}
-                className="flex-1 py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+                disabled={isLoading || otp.length !== 6}
+                className="flex-1 py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-800/20 transition-all disabled:opacity-50"
               >
                 <span>{isLoading ? 'Verifying...' : t('verify_otp')}</span>
                 <ArrowRight className="w-4 h-4" />

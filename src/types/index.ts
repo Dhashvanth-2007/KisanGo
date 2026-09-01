@@ -12,6 +12,7 @@ export interface Farmer {
   state: string;
   latitude: number;
   longitude: number;
+  firebase_uid?: string;
   created_at?: string;
   role: 'farmer';
 }
