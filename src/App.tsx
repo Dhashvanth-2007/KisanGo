@@ -56,7 +56,7 @@ export const App: React.FC = () => {
 
   // Fetch Farmer Active Booking
   const fetchActiveBooking = async () => {
-    if (!user || role !== 'farmer') return;
+    if (!user || (role !== 'farmer' && role !== 'admin')) return;
     try {
       const res = await api.getFarmerActiveBooking(user.id);
       if (res.success) {
@@ -72,7 +72,7 @@ export const App: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    if (isAuthenticated && role === 'farmer') {
+    if (isAuthenticated && (role === 'farmer' || role === 'admin')) {
       fetchActiveBooking();
       const interval = setInterval(fetchActiveBooking, 5000);
       return () => clearInterval(interval);

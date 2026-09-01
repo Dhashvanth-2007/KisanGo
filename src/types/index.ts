@@ -1,4 +1,4 @@
-export type UserRole = 'farmer' | 'officer';
+export type UserRole = 'farmer' | 'officer' | 'admin';
 
 export type LanguageCode = 'Tamil' | 'English' | 'Hindi' | 'Telugu' | 'Malayalam';
 
@@ -28,6 +28,21 @@ export interface Officer {
   official_contact: string;
   role: 'officer';
   center?: ProcurementCenter;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  mobile: string;
+  language?: LanguageCode;
+  village?: string;
+  district?: string;
+  state?: string;
+  latitude?: number;
+  longitude?: number;
+  role: 'admin';
+  isAdmin: boolean;
+  permissions: string[];
 }
 
 export interface Crop {
@@ -353,7 +368,7 @@ export interface FarmerPayment {
 export interface NotificationItem {
   id: string;
   user_id: string;
-  user_type: 'farmer' | 'officer';
+  user_type: UserRole;
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'queue' | 'payment';

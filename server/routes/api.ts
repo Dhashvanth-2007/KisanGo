@@ -51,6 +51,12 @@ import {
   processVoiceQuery
 } from '../controllers/aiController.js';
 
+import {
+  generateAdminOTP,
+  getAdminOtpStatus,
+  verifyAdminOTP
+} from '../controllers/adminOtpController.js';
+
 const router = Router();
 
 // Auth routes
@@ -60,6 +66,11 @@ router.post('/auth/officer/login', officerLogin);
 router.post('/auth/officer/register', registerOfficer);
 router.put('/farmers/profile', updateFarmerProfile);
 router.put('/officers/profile', updateOfficerProfile);
+
+// Hackathon Admin OTP routes
+router.post('/admin/otp/generate', generateAdminOTP);
+router.get('/admin/otp/status', getAdminOtpStatus);
+router.post('/admin/otp/verify', verifyAdminOTP);
 
 // Centers routes
 router.get('/centers', getAllCenters);

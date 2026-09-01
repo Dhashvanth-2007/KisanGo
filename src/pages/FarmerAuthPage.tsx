@@ -11,19 +11,23 @@ import {
   formatToE164
 } from '../services/firebase';
 import { ConfirmationResult } from 'firebase/auth';
-import { Sprout, Phone, ShieldCheck, ArrowLeft, ArrowRight, User, RotateCcw } from 'lucide-react';
+import { Sprout, Phone, ShieldCheck, ArrowLeft, ArrowRight, User, RotateCcw, ShieldAlert } from 'lucide-react';
+import { AdminOtpTesterPanel } from '../components/auth/AdminOtpTesterPanel';
 
 interface FarmerAuthPageProps {
   onBack: () => void;
 }
 
 export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
-  const { loginAsFarmer, quickDemoFarmerLogin } = useAuth();
+  const { loginAsFarmer, loginAsAdmin, quickDemoFarmerLogin } = useAuth();
   const { language, setLanguage, languagesList, t } = useLanguage();
   const { showToast } = useToast();
 
+  // Environment-configured admin phone (e.g. 8903732621)
+  const configuredAdminPhone = (import.meta.env.VITE_ADMIN_PHONE || '8903732621').trim().replace(/\D/g, '');
+
   const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
-  const [mobile, setMobile] = useState('9876543210');
+  const [mobile, setMobile] = useState(configuredAdminPhone || '9876543210');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('Ravi Kumar');
   const [village, setVillage] = useState('Vengikkal Village');
@@ -56,7 +60,10 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
   const handleMobileChange = (val: string) => {
     const clean = val.replace(/\D/g, '');
     setMobile(clean);
-    if (clean === '9876543210') {
+    if (clean === configuredAdminPhone) {
+      setName('KisanGo Admin');
+      setVillage('Admin HQ');
+    } else if (clean === '9876543210') {
       setName('Ravi Kumar');
       setVillage('Vengikkal Village');
     } else if (clean.length === 10 && name === 'Ravi Kumar') {
@@ -76,12 +83,27 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
 
     setIsLoading(true);
     try {
-      // 1. Initialize Firebase RecaptchaVerifier
+      // 1. Check if entering the configured Admin Phone Number
+      if (cleanMobile === configuredAdminPhone) {
+        const adminRes = await api.generateAdminOTP(cleanMobile);
+        if (adminRes.success) {
+          showToast('OTP generated successfully', 'success');
+          setCountdown(60);
+          setCanResend(false);
+          setOtp('');
+          setStep('otp');
+          return;
+        } else {
+          showToast(adminRes.message || 'Failed to generate Admin OTP', 'error');
+          return;
+        }
+      }
+
+      // 2. Normal user: Initialize Firebase RecaptchaVerifier and call signInWithPhoneNumber
       const verifier = initRecaptchaVerifier('recaptcha-container', () => {
         showToast('reCAPTCHA expired. Please try sending OTP again.', 'warning');
       });
 
-      // 2. Call Firebase signInWithPhoneNumber (E.164: +91XXXXXXXXXX)
       const confirmation = await sendFirebasePhoneOTP(cleanMobile, verifier);
       confirmationResultRef.current = confirmation;
 
@@ -132,9 +154,28 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
 
     setIsLoading(true);
     try {
+      // 1. Admin OTP Verification on Server
+      if (cleanMobile === configuredAdminPhone) {
+        const adminVerifyRes = await api.verifyAdminOTP({
+          mobile: cleanMobile,
+          otp: cleanOtp,
+          name: name.trim() || 'KisanGo Admin'
+        });
+
+        if (adminVerifyRes.success && adminVerifyRes.user) {
+          showToast('Admin authentication successful! Welcome Admin.', 'success');
+          loginAsAdmin(adminVerifyRes.user, adminVerifyRes.token);
+          return;
+        } else {
+          showToast(adminVerifyRes.message || 'Admin verification failed', 'error');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // 2. Normal Farmer OTP Verification via Firebase
       let firebaseUid: string | undefined = undefined;
 
-      // 1. Verify OTP with Firebase if confirmationResult is active
       if (confirmationResultRef.current) {
         try {
           const userCredential = await confirmFirebaseOTP(confirmationResultRef.current, cleanOtp);
@@ -149,11 +190,10 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
             setIsLoading(false);
             return;
           }
-          showToast(errMessage, 'warning');
         }
       }
 
-      // 2. Complete KisanGo Backend Profile & Session Onboarding
+      // 3. Complete KisanGo Backend Profile & Session Onboarding
       const res = await api.verifyFarmerOTP({
         mobile: cleanMobile,
         otp: cleanOtp,
@@ -207,7 +247,7 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-km-textPrimary">{t('enter_mobile')}</h2>
               <p className="text-xs text-km-textSecondary">
-                Enter your 10-digit mobile number for Firebase OTP verification
+                Enter your 10-digit mobile number for OTP verification
               </p>
             </div>
 
@@ -360,6 +400,9 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
           </form>
         )}
       </div>
+
+      {/* Protected Hackathon Admin OTP Testing Panel */}
+      <AdminOtpTesterPanel onAutoFillOtp={(code) => setOtp(code)} />
     </div>
   );
 };
