@@ -1,5 +1,14 @@
 {
   "version": 2,
+  "env": {
+    "HACKATHON_OTP_MODE": "true",
+    "VITE_HACKATHON_OTP_MODE": "true"
+  },
+  "build": {
+    "env": {
+      "VITE_HACKATHON_OTP_MODE": "true"
+    }
+  },
   "functions": {
     "api/index.ts": {
       "includeFiles": "{api,server,public,node_modules/sql.js/dist}/**"

@@ -405,29 +405,5 @@ export const api = {
       body: JSON.stringify({ status, resolution })
     });
     return handleResponse(res);
-  },
-
-  // Hackathon Admin OTP Testing
-  async generateAdminOTP(mobile: string) {
-    const res = await fetch(`${BASE_URL}/admin/otp/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile })
-    });
-    return handleResponse(res);
-  },
-
-  async getAdminOtpStatus() {
-    const res = await fetch(`${BASE_URL}/admin/otp/status`);
-    return handleResponse(res);
-  },
-
-  async verifyAdminOTP(payload: { mobile: string; otp: string; name?: string }) {
-    const res = await fetch(`${BASE_URL}/admin/otp/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    return handleResponse(res);
   }
 };

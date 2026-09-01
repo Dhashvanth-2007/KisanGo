@@ -22,7 +22,7 @@ import { ProcurementCenter, Booking, NotificationItem } from './types';
 import { api } from './services/api';
 
 export const App: React.FC = () => {
-  const { user, role, isAuthenticated } = useAuth();
+  const { user, role, isAuthenticated, logout } = useAuth();
   const { language } = useLanguage();
 
   // Navigation and Auth screens
@@ -56,7 +56,7 @@ export const App: React.FC = () => {
 
   // Fetch Farmer Active Booking
   const fetchActiveBooking = async () => {
-    if (!user || (role !== 'farmer' && role !== 'admin')) return;
+    if (!user || role !== 'farmer') return;
     try {
       const res = await api.getFarmerActiveBooking(user.id);
       if (res.success) {
@@ -72,7 +72,7 @@ export const App: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    if (isAuthenticated && (role === 'farmer' || role === 'admin')) {
+    if (isAuthenticated && role === 'farmer') {
       fetchActiveBooking();
       const interval = setInterval(fetchActiveBooking, 5000);
       return () => clearInterval(interval);
@@ -118,6 +118,22 @@ export const App: React.FC = () => {
         onSelectFarmer={() => setAuthScreen('farmer_login')}
         onSelectOfficer={() => setAuthScreen('officer_login')}
       />
+    );
+  }
+
+  // Admin View
+  if (role === 'admin') {
+    return (
+      <div className="min-h-screen flex flex-col bg-green-50 p-6">
+        <h1 className="text-3xl font-black text-green-900 mb-4">🧪 HACKATHON ADMIN DASHBOARD</h1>
+        <div className="bg-white p-6 rounded-xl border border-green-200 shadow-sm max-w-2xl">
+          <p className="text-green-800 font-medium">Welcome, Hackathon Admin!</p>
+          <p className="text-sm text-gray-600 mt-2">The judge demo authentication flow was successful.</p>
+          <button onClick={logout} className="mt-6 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">
+            Logout
+          </button>
+        </div>
+      </div>
     );
   }
 

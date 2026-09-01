@@ -1,16 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Farmer, Officer, AdminUser, UserRole } from '../types';
+import { Farmer, Officer, UserRole } from '../types';
 
 interface AuthContextType {
-  user: Farmer | Officer | AdminUser | null;
+  user: Farmer | Officer | null;
   role: UserRole | null;
   token: string | null;
   isAuthenticated: boolean;
-  isAdmin: boolean;
   loginAsFarmer: (farmerData: Farmer, authToken: string) => void;
   loginAsOfficer: (officerData: Officer, authToken: string) => void;
-  loginAsAdmin: (adminData: AdminUser, authToken: string) => void;
-  updateUser: (updatedData: Partial<Farmer | Officer | AdminUser>) => void;
+  loginAsAdmin: (adminData: any, authToken: string) => void;
+  updateUser: (updatedData: Partial<Farmer | Officer>) => void;
   logout: () => void;
   quickDemoFarmerLogin: () => Promise<void>;
   quickDemoOfficerLogin: (officerId?: string) => Promise<void>;
@@ -19,7 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<Farmer | Officer | AdminUser | null>(() => {
+  const [user, setUser] = useState<Farmer | Officer | null>(() => {
     const saved = localStorage.getItem('km_user');
     return saved ? JSON.parse(saved) : null;
   });
@@ -52,20 +51,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('km_token', authToken);
   };
 
-  const loginAsAdmin = (adminData: AdminUser, authToken: string) => {
-    const admin = { ...adminData, role: 'admin' as const, isAdmin: true };
+  const loginAsAdmin = (adminData: any, authToken: string) => {
+    const admin = { ...adminData, role: 'admin' as any };
     setUser(admin);
-    setRole('admin');
+    setRole('admin' as any);
     setToken(authToken);
     localStorage.setItem('km_user', JSON.stringify(admin));
     localStorage.setItem('km_role', 'admin');
     localStorage.setItem('km_token', authToken);
   };
 
-  const updateUser = (updatedData: Partial<Farmer | Officer | AdminUser>) => {
+  const updateUser = (updatedData: Partial<Farmer | Officer>) => {
     setUser((prev) => {
       if (!prev) return null;
-      const updated = { ...prev, ...updatedData } as Farmer | Officer | AdminUser;
+      const updated = { ...prev, ...updatedData } as Farmer | Officer;
       localStorage.setItem('km_user', JSON.stringify(updated));
       return updated;
     });
@@ -132,7 +131,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role,
         token,
         isAuthenticated: !!user,
-        isAdmin: role === 'admin',
         loginAsFarmer,
         loginAsOfficer,
         loginAsAdmin,

@@ -50,14 +50,18 @@ import {
   getCenterRecommendations,
   processVoiceQuery
 } from '../controllers/aiController.js';
-
 import {
-  generateAdminOTP,
-  getAdminOtpStatus,
-  verifyAdminOTP
-} from '../controllers/adminOtpController.js';
+  generateAdminOtp,
+  getCurrentAdminOtp,
+  verifyAdminOtp
+} from '../controllers/adminController.js';
 
 const router = Router();
+
+// Admin Hackathon Routes
+router.post('/admin/generate-otp', generateAdminOtp);
+router.get('/admin/current-otp', getCurrentAdminOtp);
+router.post('/admin/verify-otp', verifyAdminOtp);
 
 // Auth routes
 router.post('/auth/farmer/send-otp', sendFarmerOTP);
@@ -66,11 +70,6 @@ router.post('/auth/officer/login', officerLogin);
 router.post('/auth/officer/register', registerOfficer);
 router.put('/farmers/profile', updateFarmerProfile);
 router.put('/officers/profile', updateOfficerProfile);
-
-// Hackathon Admin OTP routes
-router.post('/admin/otp/generate', generateAdminOTP);
-router.get('/admin/otp/status', getAdminOtpStatus);
-router.post('/admin/otp/verify', verifyAdminOTP);
 
 // Centers routes
 router.get('/centers', getAllCenters);

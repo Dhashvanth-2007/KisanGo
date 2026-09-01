@@ -30,21 +30,6 @@ export interface Officer {
   center?: ProcurementCenter;
 }
 
-export interface AdminUser {
-  id: string;
-  name: string;
-  mobile: string;
-  language?: LanguageCode;
-  village?: string;
-  district?: string;
-  state?: string;
-  latitude?: number;
-  longitude?: number;
-  role: 'admin';
-  isAdmin: boolean;
-  permissions: string[];
-}
-
 export interface Crop {
   id: string;
   name: string;
@@ -368,7 +353,7 @@ export interface FarmerPayment {
 export interface NotificationItem {
   id: string;
   user_id: string;
-  user_type: UserRole;
+  user_type: 'farmer' | 'officer' | 'admin';
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'queue' | 'payment';
