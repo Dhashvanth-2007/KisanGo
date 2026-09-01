@@ -58,8 +58,8 @@ export function ensureCenterSlotsForDate(centerId: string, date: string): void {
   const farmersPerSubSlot = schedule.farmers_per_sub_slot || 2;
 
   const insertSlot = db.prepare(`
-    INSERT INTO slots (id, center_id, date, master_window, start_time, end_time, duration_mins, capacity, booked_count, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO slots (id, center_id, date, master_window, start_time, end_time, duration_mins, capacity, booked_count, status, reserved_reason, reserved_by, reserved_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   let slotIndex = 1;
@@ -78,6 +78,12 @@ export function ensureCenterSlotsForDate(centerId: string, date: string): void {
       const subEndLabel = minutesToTime(subEnd);
       const slotId = `slot-${centerId}-${date.replace(/-/g, '')}-${subStart}`;
 
+      // 4th sub-slot (e.g. :45 - :00) is reserved for Emergency / Buffer
+      const isEmergencySlot = subMin === 45;
+      const status = isEmergencySlot ? 'Reserved' : 'Available';
+      const reason = isEmergencySlot ? 'Emergency / Buffer Reserve' : null;
+      const by = isEmergencySlot ? 'System Emergency Allocation' : null;
+
       insertSlot.run(
         slotId,
         centerId,
@@ -88,7 +94,10 @@ export function ensureCenterSlotsForDate(centerId: string, date: string): void {
         15,
         farmersPerSubSlot,
         0,
-        'Available'
+        status,
+        reason,
+        by,
+        isEmergencySlot ? `${date} 08:00:00` : null
       );
     }
   }

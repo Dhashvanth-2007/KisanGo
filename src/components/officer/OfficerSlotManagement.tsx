@@ -401,13 +401,16 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
                     const remaining = Math.max(0, subSlot.capacity - subSlot.booked_count);
                     const isBooked = subSlot.status === 'Booked' || remaining <= 0;
                     const isReserved = subSlot.status === 'Reserved';
+                    const isEmergency = isReserved && (subSlot.reserved_reason?.toLowerCase().includes('emergency') || false);
                     const isClosed = subSlot.status === 'Closed';
 
                     return (
                       <div
                         key={subSlot.id}
                         className={`p-3.5 rounded-2xl border flex flex-col justify-between space-y-2 transition-all ${
-                          isReserved
+                          isEmergency
+                            ? 'bg-rose-50/80 border-rose-300'
+                            : isReserved
                             ? 'bg-amber-50/80 border-amber-300'
                             : isBooked
                             ? 'bg-emerald-50/60 border-emerald-300'
@@ -428,7 +431,11 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
                           </div>
 
                           <div>
-                            {isReserved ? (
+                            {isEmergency ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-200/90 text-rose-900 text-[9px] font-extrabold rounded-md uppercase">
+                                <ShieldCheck className="w-2.5 h-2.5" /> Emergency
+                              </span>
+                            ) : isReserved ? (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-200/80 text-amber-900 text-[9px] font-extrabold rounded-md uppercase">
                                 <Lock className="w-2.5 h-2.5" /> Reserved
                               </span>

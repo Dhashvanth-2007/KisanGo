@@ -338,16 +338,17 @@ export async function seedData() {
     }
   ];
 
-  // Seed Center A Slots (Moderately booked)
+  // Seed Center A Slots (Moderately booked + 4th sub-slot emergency reserved)
   let slotIndexA = 1;
   masterWindows.forEach((mw, wIdx) => {
     mw.subs.forEach((sub, sIdx) => {
-      const isBooked = wIdx === 0 && (sIdx === 0 || sIdx === 1);
-      const isReserved = wIdx === 2 && sIdx === 2;
+      const isEmergency = sIdx === 3; // 4th slot reserved for emergency
+      const isBooked = !isEmergency && wIdx === 0 && (sIdx === 0 || sIdx === 1);
+      const isReserved = isEmergency || (wIdx === 2 && sIdx === 2);
       const bookedCount = isBooked ? 2 : 0;
       const status = isBooked ? 'Booked' : isReserved ? 'Reserved' : 'Available';
-      const reason = isReserved ? 'Official Requirement' : null;
-      const by = isReserved ? 'Officer A' : null;
+      const reason = isEmergency ? 'Emergency / Buffer Reserve' : isReserved ? 'Official Requirement' : null;
+      const by = isEmergency ? 'System Emergency Allocation' : isReserved ? 'Officer A' : null;
 
       insertSlot.run(
         `slot-a-${slotIndexA++}`,
@@ -367,7 +368,7 @@ export async function seedData() {
     });
   });
 
-  // Seed Center B Slots (High availability + Officer B demo reservation)
+  // Seed Center B Slots (High availability + 4th sub-slot emergency reserved)
   let slotIndexB = 1;
   masterWindows.forEach((mw, wIdx) => {
     mw.subs.forEach((sub, sIdx) => {
@@ -376,7 +377,13 @@ export async function seedData() {
       let reason: string | null = null;
       let by: string | null = null;
 
-      if (wIdx === 0 && sIdx === 0) {
+      const isEmergency = sIdx === 3; // 4th slot reserved for emergency
+
+      if (isEmergency) {
+        status = 'Reserved';
+        reason = 'Emergency / Buffer Reserve';
+        by = 'System Emergency Allocation';
+      } else if (wIdx === 0 && sIdx === 0) {
         bookedCount = 2;
         status = 'Booked';
       } else if (wIdx === 0 && sIdx === 1) {

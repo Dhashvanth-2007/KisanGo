@@ -106,8 +106,8 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Available
           </span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl">
-            <Lock className="w-2.5 h-2.5 text-amber-600" /> Reserved
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-200 rounded-xl">
+            <ShieldAlert className="w-2.5 h-2.5 text-rose-600" /> Emergency Slot
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-500 border border-gray-200 rounded-xl">
             <span className="w-2 h-2 rounded-full bg-gray-400"></span> Booked
@@ -188,7 +188,7 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
                       {mw.master_window}
                     </span>
                     <span className="text-[11px] text-gray-500 font-medium">
-                      4 Sub-Slots (15 mins each)
+                      4 Sub-Slots (Slot 4: Emergency Reserved)
                     </span>
                   </div>
                 </div>
@@ -200,7 +200,7 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
                     </span>
                   ) : (
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      {mw.available_sub_slots_count} of 4 Available
+                      {mw.available_sub_slots_count} of 3 Available
                     </span>
                   )}
                 </div>
@@ -208,17 +208,22 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
 
               {/* 4x 15-Minute Sub-Slots Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {mw.sub_slots.map((subSlot) => {
+                {mw.sub_slots.map((subSlot, sIdx) => {
                   const isSelected = selectedSlotId === subSlot.id;
                   const remaining =
                     subSlot.remaining_capacity !== undefined
                       ? subSlot.remaining_capacity
                       : Math.max(0, subSlot.capacity - subSlot.booked_count);
 
+                  const isEmergency =
+                    sIdx === 3 ||
+                    subSlot.reserved_reason?.toLowerCase().includes('emergency') ||
+                    false;
+
                   const isBooked = subSlot.status === 'Booked' || remaining <= 0;
-                  const isReserved = subSlot.status === 'Reserved';
+                  const isReserved = subSlot.status === 'Reserved' || isEmergency;
                   const isClosed = subSlot.status === 'Closed';
-                  const isAvailable = !isBooked && !isReserved && !isClosed;
+                  const isAvailable = !isBooked && !isReserved && !isClosed && !isEmergency;
 
                   return (
                     <button
@@ -229,6 +234,8 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
                       className={`relative p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between min-h-[90px] ${
                         isSelected
                           ? 'border-2 border-km-primary bg-emerald-50/90 shadow-md ring-4 ring-km-primary/15'
+                          : isEmergency
+                          ? 'border-rose-200 bg-rose-50/50 cursor-not-allowed opacity-90'
                           : isReserved
                           ? 'border-amber-200 bg-amber-50/60 cursor-not-allowed opacity-85'
                           : isBooked
@@ -241,7 +248,7 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
                       }`}
                     >
                       {/* Sub-Slot AI Tag */}
-                      {subSlot.is_ai_recommended && (
+                      {subSlot.is_ai_recommended && !isEmergency && (
                         <div className="absolute -top-2 right-2 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-emerald-600 text-[8px] font-extrabold uppercase text-white rounded-full shadow-2xs flex items-center gap-0.5">
                           <Sparkles className="w-2 h-2" />
                           <span>AI Choice</span>
@@ -266,7 +273,12 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
 
                       {/* Status Display Pill */}
                       <div className="mt-2 pt-2 border-t border-gray-100/80 flex items-center justify-between text-[10px]">
-                        {isReserved ? (
+                        {isEmergency ? (
+                          <span className="inline-flex items-center gap-1 font-extrabold text-rose-800 bg-rose-100/90 px-2 py-0.5 rounded-md">
+                            <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
+                            <span>Emergency Reserved</span>
+                          </span>
+                        ) : isReserved ? (
                           <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md">
                             <Lock className="w-2.5 h-2.5" />
                             <span>Reserved by Centre</span>
@@ -281,7 +293,7 @@ export const SlotSelectionGrid: React.FC<SlotSelectionGridProps> = ({
                           </span>
                         ) : (
                           <span className="font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                            {remaining} {remaining === 1 ? 'Slot' : 'Slots'} Open
+                            Available
                           </span>
                         )}
                       </div>
