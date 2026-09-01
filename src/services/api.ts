@@ -206,6 +206,68 @@ export const api = {
     return handleResponse(res);
   },
 
+  // Officer Slot Management
+  async getOfficerSlotSummary(centerId: string, date?: string) {
+    const query = date ? `?centerId=${centerId}&date=${date}` : `?centerId=${centerId}`;
+    const res = await fetch(`${BASE_URL}/officer/slots/summary${query}`);
+    return handleResponse(res);
+  },
+
+  async reserveSlots(payload: {
+    centerId: string;
+    slotIds: string[];
+    reason: string;
+    officerName?: string;
+  }) {
+    const res = await fetch(`${BASE_URL}/officer/slots/reserve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async releaseReservedSlots(payload: {
+    centerId: string;
+    slotIds: string[];
+  }) {
+    const res = await fetch(`${BASE_URL}/officer/slots/release`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async toggleSlotStatus(payload: {
+    centerId: string;
+    slotId: string;
+    status: 'Available' | 'Closed';
+  }) {
+    const res = await fetch(`${BASE_URL}/officer/slots/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async updateScheduleConfig(payload: {
+    centerId: string;
+    openingTime: string;
+    closingTime: string;
+    breakStart?: string;
+    breakEnd?: string;
+    farmersPerSubSlot: number;
+  }) {
+    const res = await fetch(`${BASE_URL}/officer/schedule/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
   // Officer Dashboard & Procurement
   async getOfficerDashboard(centerId: string) {
     const res = await fetch(`${BASE_URL}/officer/dashboard/${centerId}`);

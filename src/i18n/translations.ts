@@ -181,7 +181,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     cards_view: 'Cards',
     filters_label: 'Filters',
     your_location: 'Your Location',
-    full_profile: 'Full Profile'
+    full_profile: 'Full Profile',
+    choose_slot_title: 'Choose Your 15-Minute Slot',
+    choose_slot_subtitle: 'Select a convenient 15-minute window to avoid congestion and wait times',
+    master_window: '1-Hour Window',
+    sub_slots_label: '15-Minute Sub-Slots',
+    reserved_by_centre: 'Reserved by Centre'
   },
 
   Tamil: {
@@ -364,7 +369,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     cards_view: 'கார்டுகள்',
     filters_label: 'வடிகட்டிகள்',
     your_location: 'உங்கள் இருப்பிடம்',
-    full_profile: 'முழு விவரம்'
+    full_profile: 'முழு விவரம்',
+    choose_slot_title: 'உங்கள் 15-நிமிட நேர இடத்தைத் தேர்வு செய்யவும்',
+    choose_slot_subtitle: 'நெரிசலைத் தவிர்க்க வசதியான 15-நிமிட நேரத்தைத் தேர்வு செய்யுங்கள்',
+    master_window: '1-மணி நேர சாளரம்',
+    sub_slots_label: '15-நிமிட துணை இடங்கள்',
+    reserved_by_centre: 'மையத்தால் ஒதுக்கப்பட்டது'
   },
 
   Hindi: {
@@ -547,7 +557,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     cards_view: 'कार्ड्स',
     filters_label: 'फ़िल्टर',
     your_location: 'आपका स्थान',
-    full_profile: 'पूरी प्रोफ़ाइल'
+    full_profile: 'पूरी प्रोफ़ाइल',
+    choose_slot_title: 'अपना 15-मिनट का स्लॉट चुनें',
+    choose_slot_subtitle: 'भीड़ से बचने के लिए सुविधाजनक 15-मिनट का समय चुनें',
+    master_window: '1-घंटे की विंडो',
+    sub_slots_label: '15-मिनट उप-स्लॉट',
+    reserved_by_centre: 'केंद्र द्वारा आरक्षित'
   },
 
   Telugu: {
@@ -730,7 +745,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     cards_view: 'కార్డులు',
     filters_label: 'ఫిల్టర్లు',
     your_location: 'మీ స్థానం',
-    full_profile: 'పూర్తి ప్రొఫైల్'
+    full_profile: 'పూర్తి ప్రొఫైల్',
+    choose_slot_title: 'మీ 15-నిమిషాల స్లాట్‌ను ఎంచుకోండి',
+    choose_slot_subtitle: 'రద్దీని నివారించడానికి సౌకర్యవంతమైన 15-నిమిషాల సమయాన్ని ఎంచుకోండి',
+    master_window: '1-గంట విండో',
+    sub_slots_label: '15-నిమిషాల ఉప-స్లాట్లు',
+    reserved_by_centre: 'కేంద్రం ద్వారా రిజర్వ్ చేయబడింది'
   },
 
   Malayalam: {
@@ -913,6 +933,11 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     cards_view: 'കാർഡുകൾ',
     filters_label: 'ഫിൽട്ടറുകൾ',
     your_location: 'നിങ്ങളുടെ സ്ഥാനം',
-    full_profile: 'പൂർണ്ണ വിവരങ്ങൾ'
+    full_profile: 'പൂർണ്ണ വിവരങ്ങൾ',
+    choose_slot_title: 'നിങ്ങളുടെ 15-മിനിറ്റ് സ്ലോട്ട് തിരഞ്ഞെടുക്കുക',
+    choose_slot_subtitle: 'തിരക്ക് ഒഴിവാക്കാൻ സൗകര്യപ്രദമായ 15-മിനിറ്റ് സമയം തിരഞ്ഞെടുക്കുക',
+    master_window: '1-മണിക്കൂർ വിൻഡോ',
+    sub_slots_label: '15-മിനിറ്റ് സബ് സ്ലോട്ടുകൾ',
+    reserved_by_centre: 'കേന്ദ്രം മാറ്റിവെച്ചത്'
   }
 };

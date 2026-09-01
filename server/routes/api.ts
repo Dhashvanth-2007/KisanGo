@@ -16,7 +16,12 @@ import {
   getCenterSlots,
   bookSlot,
   getFarmerActiveBooking,
-  cancelBooking
+  cancelBooking,
+  reserveSlots,
+  releaseReservedSlots,
+  toggleSlotStatus,
+  getOfficerSlotSummary,
+  updateCenterScheduleConfig
 } from '../controllers/slotController.js';
 import {
   getLiveQueue,
@@ -65,6 +70,13 @@ router.get('/centers/:centerId/slots', getCenterSlots);
 router.post('/bookings', bookSlot);
 router.get('/bookings/active/:farmerId', getFarmerActiveBooking);
 router.post('/bookings/:id/cancel', cancelBooking);
+
+// Officer Slot Management routes
+router.get('/officer/slots/summary', getOfficerSlotSummary);
+router.post('/officer/slots/reserve', reserveSlots);
+router.post('/officer/slots/release', releaseReservedSlots);
+router.post('/officer/slots/toggle', toggleSlotStatus);
+router.post('/officer/schedule/config', updateCenterScheduleConfig);
 
 // Queue routes
 router.get('/centers/:centerId/queue', getLiveQueue);

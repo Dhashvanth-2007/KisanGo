@@ -83,16 +83,35 @@ CREATE TABLE IF NOT EXISTS center_ratings (
   FOREIGN KEY (farmer_id) REFERENCES farmers(id)
 );
 
--- Slots Table
+-- Slots Table (Master 1-Hour Windows with 15-Minute Sub-Slots)
 CREATE TABLE IF NOT EXISTS slots (
   id TEXT PRIMARY KEY,
   center_id TEXT NOT NULL,
   date TEXT NOT NULL,
-  start_time TEXT NOT NULL,
-  end_time TEXT NOT NULL,
-  capacity INTEGER NOT NULL DEFAULT 10,
+  master_window TEXT, -- e.g. '09:00 AM - 10:00 AM'
+  start_time TEXT NOT NULL, -- e.g. '09:00 AM'
+  end_time TEXT NOT NULL, -- e.g. '09:15 AM'
+  duration_mins INTEGER DEFAULT 15,
+  capacity INTEGER NOT NULL DEFAULT 2,
   booked_count INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'Available', -- 'Available', 'Filling Fast', 'Full'
+  status TEXT NOT NULL DEFAULT 'Available', -- 'Available', 'Booked', 'Reserved', 'Closed', 'Completed'
+  reserved_reason TEXT, -- 'Centre Maintenance', 'Official Requirement', 'Emergency', 'Break', 'Staff Requirement', 'Capacity Control', 'Other'
+  reserved_by TEXT,
+  reserved_at TEXT,
+  FOREIGN KEY (center_id) REFERENCES procurement_centers(id) ON DELETE CASCADE
+);
+
+-- Center Schedules & Configuration Table
+CREATE TABLE IF NOT EXISTS center_schedules (
+  center_id TEXT PRIMARY KEY,
+  opening_time TEXT NOT NULL DEFAULT '09:00 AM',
+  closing_time TEXT NOT NULL DEFAULT '05:00 PM',
+  break_start TEXT DEFAULT '01:00 PM',
+  break_end TEXT DEFAULT '02:00 PM',
+  farmers_per_sub_slot INTEGER NOT NULL DEFAULT 2,
+  master_slot_duration INTEGER NOT NULL DEFAULT 60,
+  sub_slot_duration INTEGER NOT NULL DEFAULT 15,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (center_id) REFERENCES procurement_centers(id) ON DELETE CASCADE
 );
 

@@ -62,9 +62,16 @@ export const DigitalTokenCard: React.FC<DigitalTokenCardProps> = ({
           {/* Slot & Consignment */}
           <div className="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-100 space-y-1.5">
             <span className="text-gray-400 font-semibold text-[10px] uppercase block">Slot & Consignment</span>
-            <div className="flex items-center gap-1.5 font-bold text-km-textPrimary text-sm">
-              <Calendar className="w-3.5 h-3.5 text-km-primary" />
-              <span>{booking.slot_start} - {booking.slot_end}</span>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 font-black text-km-textPrimary text-sm">
+                <Clock className="w-3.5 h-3.5 text-km-primary" />
+                <span>{booking.slot_start} - {booking.slot_end} (15 mins)</span>
+              </div>
+              {booking.master_window && (
+                <span className="text-[10px] text-gray-500 block font-medium">
+                  1-Hour Window: {booking.master_window}
+                </span>
+              )}
             </div>
 
             {/* If multi-crop */}

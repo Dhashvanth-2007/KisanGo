@@ -16,6 +16,7 @@ export async function seedData() {
       DELETE FROM queue;
       DELETE FROM tokens;
       DELETE FROM bookings;
+      DELETE FROM center_schedules;
       DELETE FROM slots;
       DELETE FROM center_ratings;
       DELETE FROM crops;
@@ -253,46 +254,185 @@ export async function seedData() {
   // Center C reviews
   insertRating.run('rev-c1', 'center-c', 'farmer-3', 'Ramesh Patel', 3.2, 2.0, 4.0, 3.0, 3.5, 'Huge queue of tractors on the main road. Had to wait 3 hours because single weighbridge broke down.', '2026-08-29 16:45:00');
 
-  // 7. Insert Slots for Today
-  const insertSlot = db.prepare(`
-    INSERT INTO slots (id, center_id, date, start_time, end_time, capacity, booked_count, status)
+  // 7. Insert Center Schedules (FarmeGo Smart 1-Hour System)
+  const insertSchedule = db.prepare(`
+    INSERT INTO center_schedules (center_id, opening_time, closing_time, break_start, break_end, farmers_per_sub_slot, master_slot_duration, sub_slot_duration)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
+  insertSchedule.run('center-a', '09:00 AM', '05:00 PM', '01:00 PM', '02:00 PM', 2, 60, 15);
+  insertSchedule.run('center-b', '09:00 AM', '05:00 PM', '01:00 PM', '02:00 PM', 2, 60, 15);
+  insertSchedule.run('center-c', '09:00 AM', '05:00 PM', '01:00 PM', '02:00 PM', 2, 60, 15);
+
+  // 8. Insert 1-Hour Master Windows + 4 15-Minute Sub-Slots for Today
+  const insertSlot = db.prepare(`
+    INSERT INTO slots (id, center_id, date, master_window, start_time, end_time, duration_mins, capacity, booked_count, status, reserved_reason, reserved_by, reserved_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
   const todayStr = new Date().toISOString().split('T')[0];
-  const timeSlots = [
-    { start: '09:00 AM', end: '09:30 AM' },
-    { start: '09:30 AM', end: '10:00 AM' },
-    { start: '10:00 AM', end: '10:30 AM' },
-    { start: '10:30 AM', end: '11:00 AM' },
-    { start: '11:00 AM', end: '11:30 AM' },
-    { start: '11:30 AM', end: '12:00 PM' },
-    { start: '02:00 PM', end: '02:30 PM' },
-    { start: '02:30 PM', end: '03:00 PM' },
-    { start: '03:00 PM', end: '03:30 PM' },
-    { start: '03:30 PM', end: '04:00 PM' }
+
+  const masterWindows = [
+    {
+      window: '09:00 AM - 10:00 AM',
+      subs: [
+        { start: '09:00 AM', end: '09:15 AM' },
+        { start: '09:15 AM', end: '09:30 AM' },
+        { start: '09:30 AM', end: '09:45 AM' },
+        { start: '09:45 AM', end: '10:00 AM' }
+      ]
+    },
+    {
+      window: '10:00 AM - 11:00 AM',
+      subs: [
+        { start: '10:00 AM', end: '10:15 AM' },
+        { start: '10:15 AM', end: '10:30 AM' },
+        { start: '10:30 AM', end: '10:45 AM' },
+        { start: '10:45 AM', end: '11:00 AM' }
+      ]
+    },
+    {
+      window: '11:00 AM - 12:00 PM',
+      subs: [
+        { start: '11:00 AM', end: '11:15 AM' },
+        { start: '11:15 AM', end: '11:30 AM' },
+        { start: '11:30 AM', end: '11:45 AM' },
+        { start: '11:45 AM', end: '12:00 PM' }
+      ]
+    },
+    {
+      window: '12:00 PM - 01:00 PM',
+      subs: [
+        { start: '12:00 PM', end: '12:15 PM' },
+        { start: '12:15 PM', end: '12:30 PM' },
+        { start: '12:30 PM', end: '12:45 PM' },
+        { start: '12:45 PM', end: '01:00 PM' }
+      ]
+    },
+    {
+      window: '02:00 PM - 03:00 PM',
+      subs: [
+        { start: '02:00 PM', end: '02:15 PM' },
+        { start: '02:15 PM', end: '02:30 PM' },
+        { start: '02:30 PM', end: '02:45 PM' },
+        { start: '02:45 PM', end: '03:00 PM' }
+      ]
+    },
+    {
+      window: '03:00 PM - 04:00 PM',
+      subs: [
+        { start: '03:00 PM', end: '03:15 PM' },
+        { start: '03:15 PM', end: '03:30 PM' },
+        { start: '03:30 PM', end: '03:45 PM' },
+        { start: '03:45 PM', end: '04:00 PM' }
+      ]
+    },
+    {
+      window: '04:00 PM - 05:00 PM',
+      subs: [
+        { start: '04:00 PM', end: '04:15 PM' },
+        { start: '04:15 PM', end: '04:30 PM' },
+        { start: '04:30 PM', end: '04:45 PM' },
+        { start: '04:45 PM', end: '05:00 PM' }
+      ]
+    }
   ];
 
-  // Center A Slots: Moderately booked
-  timeSlots.forEach((slot, i) => {
-    const booked = i === 0 ? 10 : i === 1 ? 8 : i === 2 ? 6 : 4;
-    const status = booked >= 10 ? 'Full' : booked >= 7 ? 'Filling Fast' : 'Available';
-    insertSlot.run(`slot-a-${i + 1}`, 'center-a', todayStr, slot.start, slot.end, 10, booked, status);
+  // Seed Center A Slots (Moderately booked)
+  let slotIndexA = 1;
+  masterWindows.forEach((mw, wIdx) => {
+    mw.subs.forEach((sub, sIdx) => {
+      const isBooked = wIdx === 0 && (sIdx === 0 || sIdx === 1);
+      const isReserved = wIdx === 2 && sIdx === 2;
+      const bookedCount = isBooked ? 2 : 0;
+      const status = isBooked ? 'Booked' : isReserved ? 'Reserved' : 'Available';
+      const reason = isReserved ? 'Official Requirement' : null;
+      const by = isReserved ? 'Officer A' : null;
+
+      insertSlot.run(
+        `slot-a-${slotIndexA++}`,
+        'center-a',
+        todayStr,
+        mw.window,
+        sub.start,
+        sub.end,
+        15,
+        2,
+        bookedCount,
+        status,
+        reason,
+        by,
+        isReserved ? `${todayStr} 08:00:00` : null
+      );
+    });
   });
 
-  // Center B Slots: Ample capacity & high availability (8 slots available)
-  timeSlots.forEach((slot, i) => {
-    const booked = i === 0 ? 3 : i === 1 ? 2 : i === 2 ? 2 : 1;
-    const status = 'Available';
-    insertSlot.run(`slot-b-${i + 1}`, 'center-b', todayStr, slot.start, slot.end, 10, booked, status);
+  // Seed Center B Slots (High availability + Officer B demo reservation)
+  let slotIndexB = 1;
+  masterWindows.forEach((mw, wIdx) => {
+    mw.subs.forEach((sub, sIdx) => {
+      let bookedCount = 0;
+      let status: 'Available' | 'Booked' | 'Reserved' | 'Closed' = 'Available';
+      let reason: string | null = null;
+      let by: string | null = null;
+
+      if (wIdx === 0 && sIdx === 0) {
+        bookedCount = 2;
+        status = 'Booked';
+      } else if (wIdx === 0 && sIdx === 1) {
+        bookedCount = 1; // Farmer-2 is processing
+        status = 'Available';
+      } else if (wIdx === 0 && sIdx === 2) {
+        bookedCount = 1; // Farmer-3 is waiting
+        status = 'Available';
+      } else if (wIdx === 1 && sIdx === 2) {
+        // Reserved slot for demo
+        status = 'Reserved';
+        reason = 'Centre Maintenance';
+        by = 'Demo Officer B';
+      }
+
+      insertSlot.run(
+        `slot-b-${slotIndexB++}`,
+        'center-b',
+        todayStr,
+        mw.window,
+        sub.start,
+        sub.end,
+        15,
+        2,
+        bookedCount,
+        status,
+        reason,
+        by,
+        status === 'Reserved' ? `${todayStr} 08:00:00` : null
+      );
+    });
   });
 
-  // Center C Slots: Fully booked / Overloaded
-  timeSlots.forEach((slot, i) => {
-    insertSlot.run(`slot-c-${i + 1}`, 'center-c', todayStr, slot.start, slot.end, 6, 6, 'Full');
+  // Seed Center C Slots (Heavy congestion / Fully Booked)
+  let slotIndexC = 1;
+  masterWindows.forEach((mw) => {
+    mw.subs.forEach((sub) => {
+      insertSlot.run(
+        `slot-c-${slotIndexC++}`,
+        'center-c',
+        todayStr,
+        mw.window,
+        sub.start,
+        sub.end,
+        15,
+        2,
+        2,
+        'Booked',
+        null,
+        null,
+        null
+      );
+    });
   });
 
-  // 8. Insert Demo Existing Bookings & Live Queue Items for Center B and Center A
+  // 9. Insert Demo Existing Bookings & Live Queue Items for Center B and Center A
   const insertBooking = db.prepare(`
     INSERT INTO bookings (id, farmer_id, center_id, slot_id, crop_id, expected_quantity, priority_score, estimated_processing_mins, estimated_waiting_mins, travel_time_mins, status, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

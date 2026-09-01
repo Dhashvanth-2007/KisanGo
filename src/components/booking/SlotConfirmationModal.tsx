@@ -125,17 +125,43 @@ export const SlotConfirmationModal: React.FC<SlotConfirmationModalProps> = ({
           </div>
         </div>
 
-        {/* Slot Window & Departure Guidance */}
-        <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100 flex items-center justify-between text-xs">
-          <div className="space-y-0.5">
-            <span className="text-blue-900 font-bold block text-sm">
-              {slot.start_time} - {slot.end_time}
+        {/* 1-Hour Window & 15-Minute Sub-Slot Banner */}
+        <div className="bg-blue-50/80 p-4 rounded-2xl border border-blue-200/80 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-blue-900 uppercase tracking-wider text-[10px]">
+              Procurement Time Allocation
             </span>
-            <span className="text-blue-700 font-semibold text-[11px]">
-              {t('recommended_departure')}: <strong>{slot.recommended_departure || '09:05 AM'}</strong>
+            <span className="text-[10px] font-bold bg-blue-200/60 text-blue-950 px-2 py-0.5 rounded-full">
+              15-Min Priority Bay
             </span>
           </div>
-          <Clock className="w-5 h-5 text-blue-600 shrink-0" />
+
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <span className="text-[11px] text-gray-500 block">1-Hour Master Window</span>
+              <span className="font-bold text-xs text-gray-800">
+                {slot.master_window || `${slot.start_time} - ${slot.end_time}`}
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-[11px] text-blue-800 font-semibold block">Confirmed Sub-Slot</span>
+              <span className="font-black text-sm text-blue-950">
+                {slot.start_time} - {slot.end_time}
+              </span>
+            </div>
+          </div>
+
+          {slot.recommended_departure && (
+            <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between text-[11px]">
+              <span className="text-blue-800 font-medium flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                <span>{t('recommended_departure')}:</span>
+              </span>
+              <span className="font-extrabold text-blue-950 bg-white px-2 py-0.5 rounded-md border border-blue-100 shadow-2xs">
+                {slot.recommended_departure}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Total Time Breakdown Banner */}

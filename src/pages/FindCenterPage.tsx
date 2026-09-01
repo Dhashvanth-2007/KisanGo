@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ProcurementCenter, Slot, Crop, SelectedCropItem } from '../types';
+import { ProcurementCenter, Slot, MasterSlotWindow, Crop, SelectedCropItem } from '../types';
 import { CenterDiscoveryMap } from '../components/map/CenterDiscoveryMap';
 import { CenterCard } from '../components/center/CenterCard';
 import { CenterComparisonModal } from '../components/center/CenterComparisonModal';
@@ -55,6 +55,7 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
   const [bookingStep, setBookingStep] = useState<'crop_qty' | 'slots'>('crop_qty');
   const [selectedCrops, setSelectedCrops] = useState<SelectedCropItem[]>([]);
   const [centerSlots, setCenterSlots] = useState<Slot[]>([]);
+  const [centerMasterWindows, setCenterMasterWindows] = useState<MasterSlotWindow[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
@@ -95,10 +96,12 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
     // Fetch live slots with processing calculation
     try {
       const res = await api.getCenterSlots(center.id, undefined, 2000);
-      if (res.success && res.data.slots) {
-        setCenterSlots(res.data.slots);
-        const aiSlot = res.data.slots.find((s: Slot) => s.is_ai_recommended);
-        setSelectedSlot(aiSlot || res.data.slots[0]);
+      if (res.success && res.data) {
+        setCenterSlots(res.data.slots || []);
+        setCenterMasterWindows(res.data.masterWindows || []);
+        const aiSlot = res.data.slots?.find((s: Slot) => s.is_ai_recommended);
+        const firstAvailable = res.data.slots?.find((s: Slot) => s.status === 'Available' && (s.remaining_capacity ?? 1) > 0);
+        setSelectedSlot(aiSlot || firstAvailable || res.data.slots?.[0] || null);
       }
     } catch (e) {
       console.error(e);
@@ -328,9 +331,13 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
               <div className="space-y-4">
                 <SlotSelectionGrid
                   slots={centerSlots}
+                  masterWindows={centerMasterWindows}
                   selectedSlotId={selectedSlot?.id || null}
                   onSelectSlot={(slot) => setSelectedSlot(slot)}
                   travelTimeMins={bookingCenter.travelTimeMins}
+                  centerName={bookingCenter.name}
+                  queueCount={bookingCenter.queue}
+                  waitingTime={bookingCenter.waiting_time}
                 />
 
                 <div className="flex items-center gap-2">

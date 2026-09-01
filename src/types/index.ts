@@ -22,6 +22,7 @@ export interface Officer {
   name: string;
   designation: string;
   assigned_center_id: string;
+  assigned_center_name?: string;
   working_hours: string;
   official_contact: string;
   role: 'officer';
@@ -70,18 +71,56 @@ export interface Slot {
   id: string;
   center_id: string;
   date: string;
-  start_time: string;
-  end_time: string;
+  master_window?: string; // e.g. "09:00 AM - 10:00 AM"
+  start_time: string; // e.g. "09:00 AM"
+  end_time: string; // e.g. "09:15 AM"
+  duration_mins?: number; // 15
   capacity: number;
   booked_count: number;
   remaining_capacity?: number;
   is_full?: boolean;
-  status: 'Available' | 'Filling Fast' | 'Full';
+  status: 'Available' | 'Booked' | 'Reserved' | 'Closed' | 'Completed' | 'Filling Fast' | 'Full';
+  reserved_reason?: string;
+  reserved_by?: string;
+  reserved_at?: string;
   is_ai_recommended?: boolean;
   recommendation_reason?: string;
   recommended_departure?: string;
   estimated_processing_mins?: number;
   score?: number;
+}
+
+export interface MasterSlotWindow {
+  master_window: string;
+  start_time: string;
+  end_time: string;
+  status: 'Available' | 'Full' | 'Reserved' | 'Closed';
+  available_sub_slots_count: number;
+  total_sub_slots_count: number;
+  sub_slots: Slot[];
+}
+
+export interface SlotSummary {
+  total_slots: number;
+  booked_slots: number;
+  reserved_slots: number;
+  available_slots: number;
+  total_capacity: number;
+  booked_capacity: number;
+  reserved_capacity: number;
+  remaining_capacity: number;
+  farmers_per_sub_slot?: number;
+  max_hourly_capacity?: number;
+}
+
+export interface ScheduleConfig {
+  opening_time: string;
+  closing_time: string;
+  break_start?: string;
+  break_end?: string;
+  farmers_per_sub_slot: number;
+  master_slot_duration: number;
+  sub_slot_duration: number;
 }
 
 export interface ProcurementCenter {
@@ -199,6 +238,8 @@ export interface Booking {
   crops_breakdown?: string;
   crops_summary?: string;
   total_estimated_value?: number;
+  master_window?: string;
+  sub_slot?: string;
 }
 
 export interface DigitalToken {
