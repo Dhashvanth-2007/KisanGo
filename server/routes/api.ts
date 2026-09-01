@@ -5,7 +5,8 @@ import {
   officerLogin,
   registerOfficer,
   updateFarmerProfile,
-  updateOfficerProfile
+  updateOfficerProfile,
+  getHackathonOTP
 } from '../controllers/authController.js';
 import {
   getAllCenters,
@@ -50,20 +51,11 @@ import {
   getCenterRecommendations,
   processVoiceQuery
 } from '../controllers/aiController.js';
-import {
-  generateAdminOtp,
-  getCurrentAdminOtp,
-  verifyAdminOtp
-} from '../controllers/adminController.js';
 
 const router = Router();
 
-// Admin Hackathon Routes
-router.post('/admin/generate-otp', generateAdminOtp);
-router.get('/admin/current-otp', getCurrentAdminOtp);
-router.post('/admin/verify-otp', verifyAdminOtp);
-
 // Auth routes
+router.get('/auth/hackathon-otp', getHackathonOTP);
 router.post('/auth/farmer/send-otp', sendFarmerOTP);
 router.post('/auth/farmer/verify-otp', verifyFarmerOTP);
 router.post('/auth/officer/login', officerLogin);

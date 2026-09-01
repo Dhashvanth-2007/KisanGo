@@ -1,4 +1,4 @@
-export type UserRole = 'farmer' | 'officer' | 'admin';
+export type UserRole = 'farmer' | 'officer';
 
 export type LanguageCode = 'Tamil' | 'English' | 'Hindi' | 'Telugu' | 'Malayalam';
 
@@ -353,7 +353,7 @@ export interface FarmerPayment {
 export interface NotificationItem {
   id: string;
   user_id: string;
-  user_type: 'farmer' | 'officer' | 'admin';
+  user_type: 'farmer' | 'officer';
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'queue' | 'payment';

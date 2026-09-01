@@ -19,7 +19,7 @@ interface FarmerAuthPageProps {
 }
 
 export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
-  const { loginAsFarmer, loginAsAdmin, quickDemoFarmerLogin } = useAuth();
+  const { loginAsFarmer, quickDemoFarmerLogin } = useAuth();
   const { language, setLanguage, languagesList, t } = useLanguage();
   const { showToast } = useToast();
 
@@ -77,10 +77,6 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
 
     setIsLoading(true);
     try {
-      if ((import.meta as any).env.VITE_HACKATHON_OTP_MODE === 'true' && cleanMobile === '8903732621') {
-        await fetch('/api/admin/generate-otp', { method: 'POST' });
-      }
-
       // 1. Initialize Firebase RecaptchaVerifier
       const verifier = initRecaptchaVerifier('recaptcha-container', () => {
         showToast('reCAPTCHA expired. Please try sending OTP again.', 'warning');
@@ -134,30 +130,6 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
 
     setIsLoading(true);
     try {
-      if ((import.meta as any).env.VITE_HACKATHON_OTP_MODE === 'true' && cleanMobile === '8903732621') {
-        const adminRes = await fetch('/api/admin/verify-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ otp: cleanOtp })
-        });
-        const adminData = await adminRes.json();
-        
-        if (adminData.success) {
-          showToast(`Welcome Admin!`, 'success');
-          // Using loginAsAdmin
-          loginAsAdmin({
-            id: 'admin-1',
-            name: 'Hackathon Admin',
-            mobile: cleanMobile,
-            role: 'admin'
-          }, 'admin-token');
-          return;
-        } else {
-          showToast(adminData.message || 'Invalid Admin OTP', 'error');
-          return;
-        }
-      }
-
       let firebaseUid: string | undefined = undefined;
 
       // 1. Verify OTP with Firebase if confirmationResult is active
@@ -387,7 +359,7 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
         )}
         
         {step === 'otp' && (import.meta as any).env.VITE_HACKATHON_OTP_MODE === 'true' && mobile.replace(/\D/g, '') === '8903732621' && (
-          <AdminOTPPanel onFillOTP={(code) => setOtp(code)} />
+          <AdminOTPPanel onFillOTP={(code) => setOtp(code)} mobile={mobile.replace(/\D/g, '')} />
         )}
       </div>
     </div>

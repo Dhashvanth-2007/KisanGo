@@ -4,6 +4,22 @@ import { db } from '../db/database.js';
 // In-memory OTP storage for demonstration
 const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
+export const getHackathonOTP = (req: Request, res: Response): void => {
+  if (process.env.HACKATHON_OTP_MODE !== 'true') {
+    res.status(403).json({ success: false, message: 'Hackathon mode disabled.' });
+    return;
+  }
+  const { mobile } = req.query;
+  const cleanMobile = typeof mobile === 'string' ? mobile.trim() : '8903732621';
+  
+  const stored = otpStore.get(cleanMobile);
+  if (stored && stored.expiresAt > Date.now()) {
+    res.json({ success: true, otp: stored.otp, expiresIn: Math.floor((stored.expiresAt - Date.now()) / 1000) });
+  } else {
+    res.json({ success: false, message: 'No active OTP' });
+  }
+};
+
 export const sendFarmerOTP = (req: Request, res: Response): void => {
   try {
     const { mobile } = req.body;

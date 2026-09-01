@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 
 interface AdminOTPPanelProps {
   onFillOTP: (otp: string) => void;
+  mobile: string;
 }
 
-export const AdminOTPPanel: React.FC<AdminOTPPanelProps> = ({ onFillOTP }) => {
+export const AdminOTPPanel: React.FC<AdminOTPPanelProps> = ({ onFillOTP, mobile }) => {
   const [otp, setOtp] = useState<string>('');
   const [expiresIn, setExpiresIn] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -13,7 +14,7 @@ export const AdminOTPPanel: React.FC<AdminOTPPanelProps> = ({ onFillOTP }) => {
   const fetchOTP = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/current-otp');
+      const res = await fetch(`/api/auth/hackathon-otp?mobile=${mobile}`);
       const data = await res.json();
       if (data.success && data.otp) {
         setOtp(data.otp);
@@ -33,7 +34,7 @@ export const AdminOTPPanel: React.FC<AdminOTPPanelProps> = ({ onFillOTP }) => {
       setExpiresIn((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mobile]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(otp);
@@ -53,7 +54,7 @@ export const AdminOTPPanel: React.FC<AdminOTPPanelProps> = ({ onFillOTP }) => {
     <div className="mt-6 border-2 border-green-500 bg-green-50 rounded-xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-green-800 flex items-center gap-2 text-lg">
-          <span>🧪</span> HACKATHON ADMIN OTP
+          <span>🧪</span> HACKATHON OTP TEST MODE
         </h3>
         {loading && <span className="text-xs text-green-600 font-semibold animate-pulse">Refreshing...</span>}
       </div>

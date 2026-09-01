@@ -8,7 +8,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loginAsFarmer: (farmerData: Farmer, authToken: string) => void;
   loginAsOfficer: (officerData: Officer, authToken: string) => void;
-  loginAsAdmin: (adminData: any, authToken: string) => void;
   updateUser: (updatedData: Partial<Farmer | Officer>) => void;
   logout: () => void;
   quickDemoFarmerLogin: () => Promise<void>;
@@ -48,16 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(authToken);
     localStorage.setItem('km_user', JSON.stringify(officer));
     localStorage.setItem('km_role', 'officer');
-    localStorage.setItem('km_token', authToken);
-  };
-
-  const loginAsAdmin = (adminData: any, authToken: string) => {
-    const admin = { ...adminData, role: 'admin' as any };
-    setUser(admin);
-    setRole('admin' as any);
-    setToken(authToken);
-    localStorage.setItem('km_user', JSON.stringify(admin));
-    localStorage.setItem('km_role', 'admin');
     localStorage.setItem('km_token', authToken);
   };
 
@@ -133,7 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         loginAsFarmer,
         loginAsOfficer,
-        loginAsAdmin,
         updateUser,
         logout,
         quickDemoFarmerLogin,
