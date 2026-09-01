@@ -25,7 +25,7 @@ export const getCenterRecommendations = (req: Request, res: Response): void => {
         `).get(center.id) as any;
       const queueCount = liveQueueRow?.cnt ?? 0;
 
-      // Avg processing time per farmer at this center (from historical procurement records)
+      // Avg processing time per farmer at this center
       const avgProcRow = db.prepare(`
         SELECT AVG(pr.actual_quantity) as avg_qty
         FROM procurement_records pr
@@ -33,9 +33,7 @@ export const getCenterRecommendations = (req: Request, res: Response): void => {
         WHERE b.center_id = ?
       `).get(center.id) as any;
       const avgQtyKg = avgProcRow?.avg_qty || 2000;
-      // 15 min base + 5 min per 1000kg above 1000kg, per farmer in queue
       const avgMinsPerFarmer = Math.round(15 + Math.max(0, (avgQtyKg - 1000) / 1000) * 5);
-      // Wait = farmers ahead × avg processing time per farmer
       const waitTime = Math.round(queueCount * avgMinsPerFarmer);
       const totalTime = travelTime + waitTime + processingMins;
 
@@ -56,7 +54,7 @@ export const getCenterRecommendations = (req: Request, res: Response): void => {
       };
     });
 
-    // Sort by lowest Total Time (Total Time = Travel + Wait + Processing)
+    // Sort by lowest Total Time
     scoredCenters.sort((a, b) => a.totalFarmerTimeMins - b.totalFarmerTimeMins);
 
     const bestCenter = scoredCenters[0];
@@ -68,7 +66,7 @@ export const getCenterRecommendations = (req: Request, res: Response): void => {
       let reason = '';
 
       if (isBest) {
-        reason = `${center.name} saves approximately ${timeSavedVsNearest > 0 ? timeSavedVsNearest + ' mins' : 'valuable time'} overall. Although ${center.distanceKm} km away, the live queue is only ${center.queueCount} vehicles with express weighbridges and ${center.openSlotsCount} open slots.`;
+        reason = `${center.name} saves approximately ${timeSavedVsNearest > 0 ? timeSavedVsNearest + ' mins' : 'valuable time'} overall. Live queue is only ${center.queueCount} vehicles with express weighbridges and ${center.openSlotsCount} open slots.`;
       } else if (center.waitingTimeMins > 60) {
         reason = `High congestion: ${center.queueCount} farmers waiting (~${center.waitingTimeMins} min wait). Not recommended today.`;
       } else {
@@ -114,7 +112,7 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
 
     const cleanQuery = query.toLowerCase().trim();
 
-    // Fetch context for this farmer safely with proper column names
+    // Fetch context for this farmer safely
     let activeBooking: any = null;
     let latestPayment: any = null;
 
@@ -172,11 +170,15 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('lowest') ||
       cleanQuery.includes('wait') ||
       cleanQuery.includes('center') ||
-      cleanQuery.includes('குறைந்த காத்திருப்பு') ||
+      cleanQuery.includes('குறைந்த') ||
+      cleanQuery.includes('காத்திருப்பு') ||
       cleanQuery.includes('மையம்') ||
       cleanQuery.includes('பரிந்துரை') ||
+      cleanQuery.includes('எந்த மையம்') ||
+      cleanQuery.includes('கூட்டம்') ||
       cleanQuery.includes('प्रतीक्षा समय') ||
       cleanQuery.includes('केंद्र') ||
+      cleanQuery.includes('सिफारिश') ||
       cleanQuery.includes('సిఫార్సు') ||
       cleanQuery.includes('కేంద్రం') ||
       cleanQuery.includes('ഏറ്റവും നല്ല') ||
@@ -184,11 +186,11 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
     ) {
       intent = 'center_recommendation';
       actionRoute = '/find-center';
-      responseTextEn = 'Based on live queue and weighbridge speed, Kilpennathur DPC (Center B) is recommended. It has 4 available slots and only 15 minutes of estimated queue time.';
-      responseTextTa = 'தற்போதைய நிலவரப்படி கீழ்பென்னாத்தூர் DPC (மையம் B) பரிந்துரைக்கப்படுகிறது. 4 காலி இடங்கள் மற்றும் 15 நிமிடங்கள் மட்டுமே காத்திருப்பு நேரம் உள்ளது.';
-      responseTextHi = 'वर्तमान कार्यभार के आधार पर, किलपेन्नात्तूर डीपीसी (केंद्र B) अनुशंसित है। इसमें 4 खुले स्लॉट और केवल 15 मिनट की कतार है।';
-      responseTextTe = 'లైవ్ క్యూ ఆధారంగా కీల్పెన్నత్తూరు సెంటర్ బి సిఫార్సు చేయబడింది. నిరీక్షణ సమయం కేవలం 15 నిమిషాలు.';
-      responseTextMl = 'തത്സമയ കണക്കുകൾ പ്രകാരം കീഴ്പെന്നാത്തൂർ ഡിപിസി (സെന്റർ ബി) ശുപാർശ ചെയ്യുന്നു. 15 മിനിറ്റ് മാത്രമാണ് കാത്തിരിപ്പ് സമയം.';
+      responseTextEn = 'Sir, right now Kilpennathur DPC (Center B) has very low rush with 4 open slots and just 15 minutes waiting time. You can book there smoothly!';
+      responseTextTa = 'வணக்கம் ஐயா! இப்போதைக்கு கீழ்பென்னாத்தூர் கொள்முதல் நிலையத்துல கூட்டம் ரொம்ப கம்மி, வெறும் 15 நிமிஷத்துல எடை போட்டு வேலை முடிஞ்சிடும். அங்க 4 ஸ்லாட் காலியா இருக்கு, நீங்க தாராளமா புக் பண்ணலாம்!';
+      responseTextHi = 'नमस्ते किसान भाई! इस समय किलपेन्नात्तूर खरीद केंद्र पर भीड़ बहुत कम है, सिर्फ 15 मिनट में काम हो जाएगा और 4 स्लॉट खाली हैं। आप तुरंत स्लॉट बुक कर सकते हैं!';
+      responseTextTe = 'నమస్కారం అండీ! ప్రస్తుతం కీల్పెన్నత్తూరు కేంద్రంలో రద్దీ చాలా తక్కువగా ఉంది, కేవలం 15 నిమిషాల్లో పూర్తవుతుంది. మీరు ఇప్పుడే స్లాట్ బుక్ చేసుకోవచ్చు!';
+      responseTextMl = 'നമസ്കാരം ചേട്ടാ! ഇപ്പോൾ കീഴ്പെന്നാത്തൂർ കേന്ദ്രത്തിൽ ഒട്ടും തിരക്കില്ല, 15 മിനിറ്റിനുള്ളിൽ കാര്യം നടക്കും. ഉടൻ തന്നെ സ്ലോട്ട് ബുക്ക് ചെയ്യാം!';
     }
     // 2. My Token / Active Slot / Booking Status
     else if (
@@ -200,8 +202,9 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('booking') ||
       cleanQuery.includes('டோக்கன்') ||
       cleanQuery.includes('முன்பதிவு') ||
+      cleanQuery.includes('என் டோக்கன்') ||
+      cleanQuery.includes('ஸ்லாட்') ||
       cleanQuery.includes('मेरा टोकन') ||
-      cleanQuery.includes('स्लॉट') ||
       cleanQuery.includes('బుకింగ్') ||
       cleanQuery.includes('టోకెన్') ||
       cleanQuery.includes('ടോക്കൺ') ||
@@ -210,16 +213,16 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       intent = 'my_token';
       actionRoute = '/my-slot';
       if (activeBooking && activeBooking.token_number) {
-        responseTextEn = `Your active token number is ${activeBooking.token_number} for slot ${activeBooking.slot_start} at ${activeBooking.center_name}.`;
-        responseTextTa = `உங்கள் டோக்கன் எண் ${activeBooking.token_number}. ${activeBooking.center_name} மையத்தில் நேரம் ${activeBooking.slot_start}.`;
-        responseTextHi = `आपका सक्रिय टोकन नंबर ${activeBooking.token_number} है, ${activeBooking.center_name} में समय ${activeBooking.slot_start}।`;
-        responseTextTe = `మీ టోకెన్ నంబర్ ${activeBooking.token_number}, సమయం ${activeBooking.slot_start}.`;
-        responseTextMl = `നിങ്ങളുടെ ടോക്കൺ നമ്പർ ${activeBooking.token_number} ആണ്.`;
+        responseTextEn = `Sir, your confirmed token number is ${activeBooking.token_number}. Your time slot is ${activeBooking.slot_start} at ${activeBooking.center_name}.`;
+        responseTextTa = `ஐயா, உங்க உறுதியான டோக்கன் நம்பர் ${activeBooking.token_number}. ${activeBooking.center_name} மையத்துல உங்க ஸ்லாட் நேரம் ${activeBooking.slot_start} மணி. நீங்க நேரத்துக்கு வந்தா போதும்!`;
+        responseTextHi = `किसान भाई, आपका पुष्ट टोकन नंबर ${activeBooking.token_number} है। आपका स्लॉट ${activeBooking.center_name} में समय ${activeBooking.slot_start} पर है।`;
+        responseTextTe = `అండీ, మీ టోకెన్ నంబర్ ${activeBooking.token_number}, సమయం ${activeBooking.slot_start}.`;
+        responseTextMl = `ചേട്ടാ, നിങ്ങളുടെ ടോക്കൺ നമ്പർ ${activeBooking.token_number} ആണ്, സമയം ${activeBooking.slot_start}.`;
       } else {
-        responseTextEn = 'You do not have an active booking token right now. You can discover centers and book a slot instantly under Find Center.';
-        responseTextTa = 'உங்களிடம் தற்போது செயலில் உள்ள டோக்கன் இல்லை. மையம் தேடு பகுதியில் புதிய முன்பதிவு செய்யலாம்.';
-        responseTextHi = 'वर्तमान में आपके पास कोई सक्रिय टोकन नहीं है। आप नया स्लॉट बुक कर सकते हैं।';
-        responseTextTe = 'ప్రస్తుతం మీకు క్రియాశీల టోకెన్ లేదు. కొత్త స్లాట్ బుక్ చేసుకోండి.';
+        responseTextEn = 'Sir, you do not have an active booking token right now. You can choose a convenient center and book a slot instantly under Find Center.';
+        responseTextTa = 'ஐயா, உங்ககிட்ட இப்போதைக்கு எந்த டோக்கனும் முன்பதிவு ஆகல. மையம் தேடு பகுதியில போயி உங்க வசதியான நேரத்துல ஒரு ஸ்லாட் புக் பண்ணிக்கோங்க!';
+        responseTextHi = 'किसान भाई, अभी आपके पास कोई सक्रिय टोकन नहीं है। आप केंद्र खोजें में जाकर तुरंत नया स्लॉट बुक कर सकते हैं।';
+        responseTextTe = 'ప్రస్తుతం మీ దగ్గర యాక్టివ్ టోకెన్ లేదు. కొత్త స్లాట్ బుక్ చేసుకోండి.';
         responseTextMl = 'നിങ്ങൾക്ക് ഇപ്പോൾ സജീവമായ ടോക്കൺ ഇല്ല. പുതിയ സ്ലോട്ട് ബുക്ക് ചെയ്യാം.';
       }
     }
@@ -233,6 +236,7 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('முன் எத்தனை') ||
       cleanQuery.includes('வரிசை') ||
       cleanQuery.includes('காத்திருப்பு') ||
+      cleanQuery.includes('எத்தனை வண்டி') ||
       cleanQuery.includes('कतार') ||
       cleanQuery.includes('मुझसे पहले') ||
       cleanQuery.includes('లైన') ||
@@ -243,17 +247,17 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       actionRoute = '/my-slot';
       if (activeBooking) {
         const farmersBefore = Math.max(0, (activeBooking.live_queue_pos || 1) - 1);
-        responseTextEn = `There are ${farmersBefore} farmer(s) ahead of you in queue. Estimated waiting time is ${activeBooking.estimated_wait || 15} minutes. Current status is ${activeBooking.live_queue_status || 'Waiting'}.`;
-        responseTextTa = `வரிசையில் உங்களுக்கு முன் ${farmersBefore} விவசாயிகள் உள்ளனர். எதிர்பார்க்கப்படும் காத்திருப்பு நேரம் ${activeBooking.estimated_wait || 15} நிமிடங்கள்.`;
-        responseTextHi = `कतार में आपसे पहले ${farmersBefore} किसान हैं। अनुमानित प्रतीक्षा समय ${activeBooking.estimated_wait || 15} मिनट है।`;
-        responseTextTe = `క్యూలో మీ కంటే ముందు ${farmersBefore} రైతులు ఉన్నారు.`;
-        responseTextMl = `ക്യൂവിൽ നിങ്ങൾക്ക് മുന്നിൽ ${farmersBefore} പേരുണ്ട്.`;
+        responseTextEn = `Sir, there are ${farmersBefore} farmer vehicle(s) ahead of you in line. Your expected waiting time is around ${activeBooking.estimated_wait || 15} minutes.`;
+        responseTextTa = `ஐயா, வரிசையில உங்களுக்கு முன்னாடி ${farmersBefore === 0 ? 'யாருமில்ல, நீங்க தான் அடுத்த ஆளு!' : `வெறும் ${farmersBefore} வண்டி தான் நிக்குது.`} இன்னும் ஒரு ${activeBooking.estimated_wait || 15} நிமிஷத்துல உங்க முறை வந்திடும்!`;
+        responseTextHi = `किसान भाई, कतार में आपसे पहले ${farmersBefore === 0 ? 'कोई नहीं है, आपका ही नंबर है!' : `केवल ${farmersBefore} वाहन हैं।`} लगभग ${activeBooking.estimated_wait || 15} मिनट में आपका काम शुरू हो जाएगा।`;
+        responseTextTe = `క్యూలో మీ కంటే ముందు ${farmersBefore} వాహనాలు ఉన్నాయి. సుమారు ${activeBooking.estimated_wait || 15} నిమిషాల్లో మీ వంతు వస్తుంది.`;
+        responseTextMl = `ക്യൂവിൽ നിങ്ങൾക്ക് മുന്നിൽ ${farmersBefore} പേരുണ്ട്. ഏകദേശം ${activeBooking.estimated_wait || 15} മിനിറ്റിനുള്ളിൽ നിങ്ങളുടെ ഊഴം വരും.`;
       } else {
-        responseTextEn = 'Live queue information is available after booking a slot. Center B currently has only 6 farmers in queue.';
-        responseTextTa = 'மையம் B இல் தற்போது 6 விவசாயிகள் மட்டுமே வரிசையில் உள்ளனர்.';
-        responseTextHi = 'केंद्र B में वर्तमान में कतार में केवल 6 किसान हैं।';
-        responseTextTe = 'సెంటర్ బి లో ప్రస్తుతం 6 మంది మాత్రమే క్యూలో ఉన్నారు.';
-        responseTextMl = 'സെന്റർ ബിയിൽ ഇപ്പോൾ 6 പേർ മാത്രമാണ് ക്യൂവിലുള്ളത്.';
+        responseTextEn = 'Sir, please book a slot to see your live queue position. Center B currently has a very small queue of just 6 vehicles.';
+        responseTextTa = 'ஐயா, ஸ்லாட் புக் பண்ணுனா உங்க லைவ் வரிசை தெரியும். கீழ்பென்னாத்தூர் நிலையத்துல இப்போ 6 வண்டி தான் நிக்குது, கூட்டம் ரொம்ப கம்மி!';
+        responseTextHi = 'किसान भाई, स्लॉट बुक करने पर आपकी लाइव स्थिति दिखेगी। केंद्र B में अभी सिर्फ 6 गाड़ियां हैं।';
+        responseTextTe = 'స్లాట్ బుక్ చేసుకోండి. సెంటర్ బి లో ఇప్పుడు కేవలం 6 వాహనాలు మాత్రమే ఉన్నాయి.';
+        responseTextMl = 'സ്ലോട്ട് ബുക്ക് ചെയ്താൽ ലൈവ് ക്യൂ കാണാം. സെന്റർ ബിയിൽ ഇപ്പോൾ 6 പേർ മാത്രമാണുള്ളത്.';
       }
     }
     // 4. Recommended Departure Time / When to Leave
@@ -264,6 +268,7 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('reach') ||
       cleanQuery.includes('கிளம்ப') ||
       cleanQuery.includes('புறப்பட') ||
+      cleanQuery.includes('எப்ப கெளம்ப') ||
       cleanQuery.includes('कब निकल') ||
       cleanQuery.includes('प्रस्थान') ||
       cleanQuery.includes('ఎప్పుడు బయలుదేరాలి') ||
@@ -272,15 +277,15 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       intent = 'departure_time';
       actionRoute = '/my-slot';
       if (activeBooking && activeBooking.recommended_departure_time) {
-        responseTextEn = `You should depart from your village by ${activeBooking.recommended_departure_time} to reach comfortably before your ${activeBooking.slot_start} slot.`;
-        responseTextTa = `உங்கள் முன்பதிவு நேரம் ${activeBooking.slot_start}. நீங்கள் உங்கள் ஊரிலிருந்து ${activeBooking.recommended_departure_time} மணிக்கு புறப்பட வேண்டும்.`;
-        responseTextHi = `आपको अपने गांव से ${activeBooking.recommended_departure_time} बजे निकलना चाहिए ताकि आप ${activeBooking.slot_start} पर पहुंच सकें।`;
-        responseTextTe = `మీరు ${activeBooking.recommended_departure_time} సమయానికి బయలుదేరాలి.`;
-        responseTextMl = `നിങ്ങൾ ${activeBooking.recommended_departure_time} ന് പുറപ്പെടണം.`;
+        responseTextEn = `Sir, your slot is at ${activeBooking.slot_start}. You should leave your village by ${activeBooking.recommended_departure_time} to reach comfortably without any rush.`;
+        responseTextTa = `ஐயா, உங்க ஸ்லாட் நேரம் ${activeBooking.slot_start}. நீங்க ஊர்ல இருந்து கரெக்டா ${activeBooking.recommended_departure_time} மணிக்கு கெளம்புனா போதும், சாவகாசமா நேரத்துக்கு போயிடலாம்!`;
+        responseTextHi = `किसान भाई, आपका स्लॉट समय ${activeBooking.slot_start} है। आप अपने गांव से आराम से ${activeBooking.recommended_departure_time} बजे निकलें ताकि समय पर पहुंच सकें।`;
+        responseTextTe = `మీరు మీ గ్రామం నుండి ${activeBooking.recommended_departure_time} సమయానికి బయలుదేరితే సమయానికి చేరుకోవచ్చు.`;
+        responseTextMl = `ചേട്ടാ, നിങ്ങൾ ${activeBooking.recommended_departure_time} ന് വീട്ടിൽ നിന്ന് പുറപ്പെട്ടാൽ സ്ലോട്ട് സമയത്ത് എത്താം.`;
       } else {
-        responseTextEn = 'Please book a slot first to receive your personalized GPS-based departure recommendation.';
-        responseTextTa = 'உங்கள் புறப்படும் நேரத்தை கணக்கிட முதலில் ஒரு முன்பதிவு செய்யுங்கள்.';
-        responseTextHi = 'प्रस्थान समय प्राप्त करने के लिए कृपया पहले स्लॉट बुक करें।';
+        responseTextEn = 'Sir, please book a slot first to receive your personalized GPS departure schedule.';
+        responseTextTa = 'ஐயா, உங்க ஊர்ல இருந்து எப்ப கெளம்பணும்னு தெரிஞ்சுக்க முதல்ல ஒரு ஸ்லாட் புக் பண்ணிக்கோங்க!';
+        responseTextHi = 'प्रस्थान समय जानने के लिए कृपया पहले एक स्लॉट बुक करें।';
         responseTextTe = 'దయచేసి మొదట స్లాట్ బుక్ చేసుకోండి.';
         responseTextMl = 'ദയവായി ആദ്യം സ്ലോട്ട് ബുക്ക് ചെയ്യുക.';
       }
@@ -297,6 +302,7 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('நெல்') ||
       cleanQuery.includes('பயிர்') ||
       cleanQuery.includes('விலை') ||
+      cleanQuery.includes('என்ன விலை') ||
       cleanQuery.includes('धान') ||
       cleanQuery.includes('फसल') ||
       cleanQuery.includes('मूल्य') ||
@@ -307,11 +313,11 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
     ) {
       intent = 'crops_info';
       actionRoute = '/find-center';
-      responseTextEn = 'Procurement centers accept Paddy Common (₹2,300/qtl), Grade A Paddy (₹2,320/qtl), Maize (₹2,090/qtl), Groundnut (₹6,377/qtl), and Ragi (₹4,290/qtl).';
-      responseTextTa = 'கொள்முதல் மையங்களில் நெல் சாதாரண ரகம் (ரூ. 2,300/குவிண்டால்), முதல் தரம் நெல் (ரூ. 2,320), மக்காச்சோளம் (ரூ. 2,090), மற்றும் நிலக்கடலை (ரூ. 6,377) வாங்கப்படுகிறது.';
-      responseTextHi = 'खरीद केंद्र धान सामान्य (₹2,300/क्विंटल), ग्रेड ए धान (₹2,320), मक्का (₹2,090) और मूंगफली स्वीकार करते हैं।';
-      responseTextTe = 'ప్రొక్యూర్మెంట్ కేంద్రాలు వరి (రూ. 2,300/క్వింటాల్), మొక్కజొన్న మరియు వేరుశనగ కొనుగోలు చేస్తాయి.';
-      responseTextMl = 'നെല്ല് സാധാരണ (ക്വിന്റലിന് ₹2,300), ഗ്രേഡ് എ നെല്ല് (₹2,320), ചോളം എന്നിവ സംഭരിക്കുന്നു.';
+      responseTextEn = 'Sir, current MSP rates are: Common Paddy ₹2,300 per quintal, Grade A Paddy ₹2,320, Maize ₹2,090, and Groundnut ₹6,377 per quintal with direct DBT payment.';
+      responseTextTa = 'ஐயா, நம்ம அரசாங்க கொள்முதல் நிலையத்துல சாதாரண ரக நெல்லுக்கு குவிண்டாலுக்கு 2,300 ரூபாயும், சன்ன ரக முதல் தர நெல்லுக்கு 2,320 ரூபாயும் தராங்க. மக்காச்சோளம் 2,090 ரூபாய், நிலக்கடலை 6,377 ரூபாய்க்கு நேரடியா எடைபோட்டு எடுக்குறாங்க!';
+      responseTextHi = 'किसान भाई, सरकारी खरीद दरें हैं: साधारण धान ₹2,300 प्रति क्विंटल, ग्रेड ए धान ₹2,320, मक्का ₹2,090 और मूंगफली ₹6,377 प्रति क्विंटल। पूरा पैसा सीधे बैंक खाते में आएगा!';
+      responseTextTe = 'ప్రభుత్వ కొనుగోలు ధరలు: సాధారణ వరి క్వింటాల్‌కు ₹2,300, గ్రేడ్ ఎ వరి ₹2,320, మొక్కజొన్న ₹2,090 మరియు వేరుశనగ ₹6,377.';
+      responseTextMl = 'നെല്ല് സാധാരണ ക്വിന്റലിന് ₹2,300, ഗ്രേഡ് എ നെല്ല് ₹2,320, ചോളം ₹2,090 എന്നിവയ്ക്കാണ് സംഭരണം നടക്കുന്നത്.';
     }
     // 6. Officer Info & Helpdesk Contact
     else if (
@@ -321,6 +327,7 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('helpline') ||
       cleanQuery.includes('அதிகாரி') ||
       cleanQuery.includes('தொலைபேசி') ||
+      cleanQuery.includes('போன்') ||
       cleanQuery.includes('अधिकारी') ||
       cleanQuery.includes('हेल्पलाइन') ||
       cleanQuery.includes('అధికారి') ||
@@ -329,11 +336,11 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
     ) {
       intent = 'officer_info';
       actionRoute = '/help';
-      responseTextEn = 'Center B is managed by Officer M. Rajeshwari (District Procurement Superintendent). Toll-free helpline: 1800-425-3435 (8 AM to 6 PM).';
-      responseTextTa = 'மையம் B அதிகாரி திருமதி எம். ராஜேஸ்வரி (மாவட்ட கொள்முதல் கண்காணிப்பாளர்). இலவச உதவி எண்: 1800-425-3435.';
-      responseTextHi = 'केंद्र B का प्रबंधन अधिकारी एम. राजेश्वरी (अधीक्षक) द्वारा किया जाता है। टोल-फ्री हेल्पलाइन: 1800-425-3435।';
-      responseTextTe = 'సెంటర్ బి అధికారి ఎం. రాజేశ్వరి. హెల్ప్‌లైన్: 1800-425-3435.';
-      responseTextMl = 'സെന്റർ ബി ഓഫീസർ എം. രാജേശ്വരി ആണ്. ടോൾ ഫ്രീ നമ്പർ: 1800-425-3435.';
+      responseTextEn = 'Sir, Center B is managed by Officer M. Rajeshwari. The toll-free helpline number is 1800 425 3435 available from 8 AM to 6 PM.';
+      responseTextTa = 'ஐயா, கீழ்பென்னாத்தூர் மையத்தோட கண்காணிப்பாளர் அதிகாரி திருமதி ராஜேஸ்வரி அம்மா. இலவச உதவி எண் 1 8 0 0 4 2 5 3 4 3 5 காலை 8 முதல் மாலை 6 மணி வரை செயல்படுதுங்க!';
+      responseTextHi = 'किसान भाई, केंद्र B की अधिकारी श्रीमती एम. राजेश्वरी हैं। टोल-फ्री हेल्पलाइन नंबर 1 8 0 0 4 2 5 3 4 3 5 सुबह 8 से शाम 6 बजे तक चालू रहता है।';
+      responseTextTe = 'సెంటర్ బి అధికారి ఎం. రాజేశ్వరి. టోల్ ఫ్రీ నంబర్ 1800 425 3435.';
+      responseTextMl = 'സെന്റർ ബി ഓഫീസർ എം. രാജേശ്വരി ആണ്. ടോൾ ഫ്രീ നമ്പർ 1800 425 3435.';
     }
     // 7. Payment Status & DBT Transfer
     else if (
@@ -346,6 +353,7 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('கட்டணம்') ||
       cleanQuery.includes('பணம்') ||
       cleanQuery.includes('வங்கி') ||
+      cleanQuery.includes('காசு') ||
       cleanQuery.includes('भुगतान') ||
       cleanQuery.includes('पैसा') ||
       cleanQuery.includes('खाता') ||
@@ -357,17 +365,17 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       actionRoute = '/help';
       if (latestPayment) {
         const amt = latestPayment.net_amount || latestPayment.amount || 58000;
-        responseTextEn = `Your last payment of ₹${Number(amt).toLocaleString('en-IN')} for ${latestPayment.crop_name || 'Grain'} is ${latestPayment.status} (UTR: ${latestPayment.utr_reference || 'RBI-DBT-SUCCESS'}).`;
-        responseTextTa = `உங்கள் ${latestPayment.crop_name || 'பயிர்'} தொகை ரூ. ${Number(amt).toLocaleString('en-IN')} கட்டணம் வெற்றிகரமாக செலுத்தப்பட்டுள்ளது (UTR: ${latestPayment.utr_reference || 'RBI-DBT-SUCCESS'}).`;
-        responseTextHi = `आपका ₹${Number(amt).toLocaleString('en-IN')} का भुगतान स्थिति ${latestPayment.status} है।`;
-        responseTextTe = `మీ చెల్లింపు స్థితి: ${latestPayment.status}. మొత్తం: ₹${Number(amt).toLocaleString('en-IN')}.`;
-        responseTextMl = `നിങ്ങളുടെ തുക ₹${Number(amt).toLocaleString('en-IN')} അക്കൗണ്ടിൽ എത്തി.`;
+        responseTextEn = `Sir, your grain payment of ₹${Number(amt).toLocaleString('en-IN')} is ${latestPayment.status}. It is credited directly via DBT to your Aadhaar-linked bank account.`;
+        responseTextTa = `ஐயா, உங்க நெல்லுக்கான தொகை ${Number(amt).toLocaleString('en-IN')} ரூபாய் உங்க ஆதார் இணைச்ச பேங்க் அக்கவுண்டுல நேரடியா டிபிடி வழியா வந்திடுச்சுங்க! UTR நம்பரும் பதிவாகிடுச்சு.`;
+        responseTextHi = `किसान भाई, आपकी फसल का ₹${Number(amt).toLocaleString('en-IN')} का भुगतान सीधे आपके आधार से जुड़े बैंक खाते में डीबीटी द्वारा सफलतापूर्वक जमा हो गया है!`;
+        responseTextTe = `మీ పంట మొత్తం ₹${Number(amt).toLocaleString('en-IN')} మీ ఆధార్ లింక్డ్ బ్యాంక్ ఖాతాలో డీబీటీ ద్వారా జమ చేయబడింది.`;
+        responseTextMl = `നിങ്ങളുടെ തുക ₹${Number(amt).toLocaleString('en-IN')} ഡിബിടി വഴി അക്കൗണ്ടിൽ നേരിട്ടെത്തി.`;
       } else {
-        responseTextEn = 'Payments are directly transferred to Aadhaar-linked DBT bank accounts within 24 to 48 hours of procurement completion.';
-        responseTextTa = 'கொள்முதல் முடிந்த 24 முதல் 48 மணி நேரத்திற்குள் ஆதார் இணைக்கப்பட்ட வங்கிக் கணக்கில் பணம் வரவு வைக்கப்படும்.';
-        responseTextHi = 'खरीद पूरी होने के 24 से 48 घंटों के भीतर डीबीटी के माध्यम से बैंक खाते में भुगतान जमा किया जाता है।';
-        responseTextTe = 'చెల్లింపులు 24-48 గంటల్లో డీబీటీ ద్వారా నేరుగా బ్యాంక్ ఖాతాలో జమ చేయబడతాయి.';
-        responseTextMl = '24-48 മണിക്കൂറിനുള്ളിൽ ഡിബിടി വഴി പണം അക്കൗണ്ടിലെത്തും.';
+        responseTextEn = 'Sir, once your grain is weighed and approved, your full payment is credited directly to your bank account via DBT within 24 to 48 hours.';
+        responseTextTa = 'ஐயா, கொள்முதல் நிலையத்துல எடை போட்டு பில் போட்ட உடனே, அடுத்த 24 முதல் 48 மணி நேரத்துல உங்க ஆதார் இணைச்ச பேங்க் அக்கவுண்ட்ல பணம் நேரடியா ஏறிடும்ங்க!';
+        responseTextHi = 'किसान भाई, खरीद पूरी होने के 24 से 48 घंटे के अंदर पूरा पैसा सीधे आपके बैंक खाते में डीबीटी द्वारा आ जाता है!';
+        responseTextTe = 'కొనుగోలు పూర్తయిన 24-48 గంటల్లో డబ్బులు నేరుగా మీ బ్యాంక్ ఖాతాలో జమ అవుతాయి.';
+        responseTextMl = 'സംഭരണം കഴിഞ്ഞ് 24-48 മണിക്കൂറിനുള്ളിൽ പണം നേരിട്ട് ബാങ്ക് അക്കൗണ്ടിലെത്തും.';
       }
     }
     // 8. Problem / Complaint / Issue
@@ -385,24 +393,24 @@ export const processVoiceQuery = (req: Request, res: Response): void => {
       cleanQuery.includes('शिकायत') ||
       cleanQuery.includes('समस्या') ||
       cleanQuery.includes('ఫిర్యాదు') ||
-      cleanQuery.includes('పరాതി')
+      cleanQuery.includes('പരാതി')
     ) {
       intent = 'complaint';
       actionRoute = '/help';
-      responseTextEn = 'You can file an evidence-based complaint in under 1 minute using voice or photo under "Help & Complaints".';
-      responseTextTa = 'நீங்கள் "உதவி & புகார்" பிரிவில் 1 நிமிடத்திற்குள் குரல் அல்லது புகைப்பட சான்றுகளுடன் புகார் அளிக்கலாம்.';
-      responseTextHi = 'आप "सहायता और शिकायत" के तहत 1 मिनट में आवाज या फोटो द्वारा शिकायत दर्ज कर सकते हैं।';
-      responseTextTe = 'మీరు సహాయం మరియు ఫిర్యాదుల విభాగంలో సులభంగా ఫిర్యాదు చేయవచ్చు.';
-      responseTextMl = 'നിങ്ങൾക്ക് സഹായം & പരാതികൾ എന്നതിൽ പരാതി സമർപ്പിക്കാം.';
+      responseTextEn = 'Sir, if you face any problem or delay, you can file an instant voice or photo complaint under Help & Complaints. District officers resolve it within 24 hours.';
+      responseTextTa = 'ஐயா, ஏதாச்சும் பிரச்சனைன்னா கவலைப்படாதீங்க! நம்ம உதவி மற்றும் புகார் பகுதியில போயி உங்க குரல் பதிவு மூலமாவே ஒரு நிமிஷத்துல புகார் பண்ணிடலாம். மாவட்ட அதிகாரிங்க உடனே நடவடிக்கை எடுப்பாங்க!';
+      responseTextHi = 'किसान भाई, अगर कोई समस्या या परेशानी है, तो आप सहायता और शिकायत में जाकर बोलकर या फोटो डालकर 1 मिनट में शिकायत दर्ज कर सकते हैं। तुरंत समाधान होगा!';
+      responseTextTe = 'ఏదైనా సమస్య ఉంటే సహాయం మరియు ఫిర్యాదుల విభాగంలో మీ వాయిస్ ద్వారా సులభంగా ఫిర్యాదు చేయవచ్చు.';
+      responseTextMl = 'എന്തെങ്കിലും പ്രശ്നമുണ്ടെങ്കിൽ സഹായം & പരാതികൾ എന്നതിൽ ശബ്ദ സന്ദേശമായി പരാതി നൽകാം.';
     }
     // 9. General / Hello / How to use Kisan Go
     else {
       intent = 'general';
-      responseTextEn = 'Welcome to Kisan Go! I can assist you with live center waiting times, digital tokens, optimal departure schedules, crop prices, and DBT payments.';
-      responseTextTa = 'வணக்கம்! நான் கிசான் கோ AI உதவியாளர். கொள்முதல் மையம் கண்டறிதல், நேரலை வரிசை, டோக்கன் மற்றும் கட்டண விவரங்களுக்கு நான் உதவ முடியும்.';
-      responseTextHi = 'किसान गो में आपका स्वागत है! मैं आपको खरीद केंद्र की सिफारिश, लाइव कतार, टोकन और भुगतान में सहायता कर सकता हूँ।';
-      responseTextTe = 'కిసాన్ గోకు స్వాగతం! నేను మీకు కేంద్రాల సిఫార్సు, లైవ్ క్యూ మరియు చెల్లింపు వివరాలలో సహాయం చేస్తాను.';
-      responseTextMl = 'കിസാൻ ഗോയിലേക്ക് സ്വാഗതം! സംഭരണ കേന്ദ്രങ്ങൾ, ലൈവ് ക്യൂ, ടോക്കൺ എന്നിവയിൽ ഞാൻ സഹായിക്കാം.';
+      responseTextEn = 'Welcome Sir! I am your Kisan Go farming assistant. Ask me anything about center wait times, tokens, live queue, grain prices, or bank payments!';
+      responseTextTa = 'வணக்கம் ஐயா! நான் உங்க கிசான் கோ உதவியாளர். கொள்முதல் நிலையத்துல கூட்டம் எவ்ளோ இருக்கு, டோக்கன் நிலவரம், நெல் விலை, பேங்க் பணம் பத்தி என்ன வேணும்னாலும் என்கிட்ட தாராளமா கேளுங்க!';
+      responseTextHi = 'राम राम किसान भाई! मैं आपका किसान गो सहायक हूँ। खरीद केंद्र की भीड़, टोकन, कतार, फसल के भाव या बैंक खाते के पैसे के बारे में मुझसे कुछ भी पूछिए!';
+      responseTextTe = 'నమస్కారం అండీ! నేను మీ కిసాన్ గో సహాయకుడిని. కొనుగోలు కేంద్రాలు, టోకెన్లు, పంట ధరలు మరియు చెల్లింపుల గురించి నన్ను అడగండి!';
+      responseTextMl = 'നമസ്കാരം ചേട്ടാ! ഞാൻ നിങ്ങളുടെ കിസാൻ ഗോ അസിസ്റ്റന്റാണ്. സംഭരണ കേന്ദ്രങ്ങൾ, ക്യൂ, വിളകളുടെ വില എന്നിവയെക്കുറിച്ച് എന്നോട് ചോദിക്കാം!';
     }
 
     // Select the localized text based on preferred language

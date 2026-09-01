@@ -101,11 +101,11 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const welcomeMap: Record<LanguageCode, string> = {
-        Tamil: 'வணக்கம்! நான் கிசான் கோ AI உதவியாளர். கொள்முதல் மையம், டோக்கன், வரிசை நிலை அல்லது கட்டண விவரங்கள் பற்றி கேட்கலாம்.',
-        English: 'Hello! I am your Kisan Go AI Assistant. Ask me about center recommendations, tokens, live queue, departure times, or payments.',
-        Hindi: 'नमस्ते! मैं किसान गो AI सहायक हूँ। खरीद केंद्र, टोकन, लाइव कतार या भुगतान के बारे में मुझसे पूछें।',
-        Telugu: 'నమస్కారం! నేను మీ కిసాన్ గో AI సహాయకుడిని. ఏదైనా అడగండి.',
-        Malayalam: 'നമസ്കാരം! ഞാൻ കിസാൻ ഗോ AI അസിസ്റ്റന്റാണ്. എന്നോട് ചോദിക്കൂ.'
+        Tamil: 'வணக்கம் ஐயா! நான் உங்க கிசான் கோ உதவியாளர். கொள்முதல் மையம், டோக்கன், வரிசை கூட்டம், நெல் விலை அல்லது பேங்க் பணம் பத்தி என்ன வேணும்னாலும் என்கிட்ட தாராளமா கேளுங்க!',
+        English: 'Hello Sir! I am your Kisan Go farming assistant. Ask me anything about center wait times, tokens, live queue, grain prices, or bank payments!',
+        Hindi: 'राम राम किसान भाई! मैं आपका किसान गो सहायक हूँ। खरीद केंद्र की भीड़, टोकन, कतार, फसल के भाव या बैंक खाते के पैसे के बारे में मुझसे कुछ भी पूछिए!',
+        Telugu: 'నమస్కారం అండీ! నేను మీ కిసాన్ గో సహాయకుడిని. కొనుగోలు కేంద్రాలు, టోకెన్లు, పంట ధరలు మరియు చెల్లింపుల గురించి నన్ను అడగండి!',
+        Malayalam: 'നമസ്കാരം ചേട്ടാ! ഞാൻ നിങ്ങളുടെ കിസാൻ ഗോ അസിസ്റ്റന്റാണ്. സംഭരണ കേന്ദ്രങ്ങൾ, ക്യൂ, വിളകളുടെ വില എന്നിവയെക്കുറിച്ച് എന്നോട് ചോദിക്കാം!'
       };
 
       const welcomeText = welcomeMap[language] || welcomeMap.English;
