@@ -13,14 +13,12 @@ export const sendFarmerOTP = (req: Request, res: Response): void => {
     }
 
     const cleanMobile = mobile.trim();
-    // Default demo OTP is 123456 for ultra fast testing, but also generated dynamically
-    const otp = cleanMobile === '9876543210' ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore.set(cleanMobile, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
     res.json({
       success: true,
-      message: `OTP sent successfully to +91 ${cleanMobile}`,
-      demoOtp: otp // Included for seamless prototype demonstration
+      message: `OTP sent successfully to +91 ${cleanMobile}`
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -37,7 +35,7 @@ export const verifyFarmerOTP = (req: Request, res: Response): void => {
     const is6Digit = /^\d{6}$/.test(cleanOtp);
 
     // Accept verified Firebase session, test OTP, 6-digit OTP, or stored OTP
-    if (!isFirebaseVerified && !firebaseUid && !is6Digit && cleanOtp !== '123456' && (!stored || stored.otp !== cleanOtp || stored.expiresAt < Date.now())) {
+    if (!isFirebaseVerified && !firebaseUid && !is6Digit && (!stored || stored.otp !== cleanOtp || stored.expiresAt < Date.now())) {
       res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please enter a valid 6-digit code.' });
       return;
     }

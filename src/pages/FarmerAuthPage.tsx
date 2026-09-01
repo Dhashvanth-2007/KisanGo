@@ -102,9 +102,6 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
         const fallbackRes = await api.sendFarmerOTP(cleanMobile);
         if (fallbackRes.success) {
           showToast(`OTP sent successfully to +91 ${cleanMobile}`, 'success');
-          if (fallbackRes.demoOtp) {
-            setOtp(fallbackRes.demoOtp);
-          }
           setStep('otp');
           setCountdown(60);
           setCanResend(false);
