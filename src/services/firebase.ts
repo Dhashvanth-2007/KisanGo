@@ -111,6 +111,10 @@ export function parseFirebasePhoneAuthError(err: any): string {
   const message = err.message || '';
 
   switch (code) {
+    case 'auth/configuration-not-found':
+      return 'Firebase Phone Auth is not enabled for this project or domain. Please enable "Phone" in Firebase Console > Authentication > Sign-in method, and add "kisango-eta.vercel.app" under Settings > Authorized domains.';
+    case 'auth/unauthorized-domain':
+      return 'Domain not authorized. Please add "kisango-eta.vercel.app" in Firebase Console > Authentication > Settings > Authorized domains.';
     case 'auth/invalid-phone-number':
       return 'The phone number is invalid. Please enter a valid 10-digit Indian mobile number.';
     case 'auth/invalid-verification-code':

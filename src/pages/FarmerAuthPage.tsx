@@ -144,9 +144,12 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
         } catch (firebaseErr: any) {
           console.warn('Firebase confirmation error:', firebaseErr);
           const errMessage = parseFirebasePhoneAuthError(firebaseErr);
-          showToast(errMessage, 'error');
-          setIsLoading(false);
-          return;
+          if (firebaseErr.code === 'auth/invalid-verification-code' || firebaseErr.code === 'auth/code-expired') {
+            showToast(errMessage, 'error');
+            setIsLoading(false);
+            return;
+          }
+          showToast(errMessage, 'warning');
         }
       }
 

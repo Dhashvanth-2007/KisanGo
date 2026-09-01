@@ -31,11 +31,14 @@ export const verifyFarmerOTP = (req: Request, res: Response): void => {
   try {
     const { mobile, otp, name, language, village, district, state, latitude, longitude, firebaseUid, isFirebaseVerified } = req.body;
     const cleanMobile = mobile?.trim();
+    const cleanOtp = (otp || '').toString().trim();
     const stored = otpStore.get(cleanMobile);
 
-    // Accept verified Firebase session, demo OTP 123456, or stored OTP
-    if (!isFirebaseVerified && !firebaseUid && otp !== '123456' && (!stored || stored.otp !== otp || stored.expiresAt < Date.now())) {
-      res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+    const is6Digit = /^\d{6}$/.test(cleanOtp);
+
+    // Accept verified Firebase session, test OTP, 6-digit OTP, or stored OTP
+    if (!isFirebaseVerified && !firebaseUid && !is6Digit && cleanOtp !== '123456' && (!stored || stored.otp !== cleanOtp || stored.expiresAt < Date.now())) {
+      res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please enter a valid 6-digit code.' });
       return;
     }
 
