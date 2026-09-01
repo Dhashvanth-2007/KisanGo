@@ -91,23 +91,23 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
       setOtp('');
       setStep('otp');
     } catch (err: any) {
-      console.error('Firebase Phone Auth Error:', err);
-      const friendlyMsg = parseFirebasePhoneAuthError(err);
-      showToast(friendlyMsg, 'error');
+      console.warn('Firebase Phone Auth Error, trying fallback OTP gateway:', err);
 
-      // If online Firebase fails due to quota or test domain fallback, trigger local verification gracefully
       try {
         const fallbackRes = await api.sendFarmerOTP(cleanMobile);
         if (fallbackRes.success) {
+          showToast(`OTP sent successfully to +91 ${cleanMobile}`, 'success');
           if (fallbackRes.demoOtp) {
             setOtp(fallbackRes.demoOtp);
           }
           setStep('otp');
           setCountdown(60);
           setCanResend(false);
+        } else {
+          showToast(fallbackRes.message || parseFirebasePhoneAuthError(err), 'error');
         }
-      } catch (fallbackErr) {
-        // silent
+      } catch (fallbackErr: any) {
+        showToast(parseFirebasePhoneAuthError(err), 'error');
       }
     } finally {
       setIsLoading(false);
