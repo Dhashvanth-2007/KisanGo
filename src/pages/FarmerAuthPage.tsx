@@ -13,6 +13,7 @@ import {
 import { ConfirmationResult } from 'firebase/auth';
 import { Sprout, Phone, ShieldCheck, ArrowLeft, ArrowRight, User, RotateCcw } from 'lucide-react';
 import { AdminOTPPanel } from '../components/auth/AdminOTPPanel';
+import { FarmerRegistrationForm } from '../components/auth/FarmerRegistrationForm';
 
 interface FarmerAuthPageProps {
   onBack: () => void;
@@ -23,7 +24,8 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
   const { language, setLanguage, languagesList, t } = useLanguage();
   const { showToast } = useToast();
 
-  const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
+  const [step, setStep] = useState<'mobile' | 'otp' | 'registration'>('mobile');
+  const [tempSession, setTempSession] = useState<{user: any, token: string} | null>(null);
   const [mobile, setMobile] = useState('9876543210');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('Ravi Kumar');
@@ -155,18 +157,20 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
       const res = await api.verifyFarmerOTP({
         mobile: cleanMobile,
         otp: cleanOtp,
-        name: name.trim() || undefined,
-        language,
-        village: village.trim() || undefined,
-        district: district.trim() || 'Tiruvannamalai',
-        state: 'Tamil Nadu',
         firebaseUid,
         isFirebaseVerified: Boolean(firebaseUid)
       });
 
       if (res.success && res.user) {
         showToast(`Welcome, ${res.user.name}!`, 'success');
-        loginAsFarmer(res.user, res.token);
+        
+        // Check if user is newly registered by default name
+        if (res.user.name.startsWith('Farmer ') || res.user.name === 'Ravi Kumar') {
+          setTempSession({ user: res.user, token: res.token });
+          setStep('registration');
+        } else {
+          loginAsFarmer(res.user, res.token);
+        }
       } else {
         showToast(res.message || 'Invalid verification code', 'error');
       }
@@ -174,6 +178,37 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
       console.error('Verify OTP Error:', err);
       const friendlyMsg = parseFirebasePhoneAuthError(err);
       showToast(friendlyMsg || 'Verification failed. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegistrationSubmit = async (data: any) => {
+    setIsLoading(true);
+    try {
+      if (tempSession) {
+        await api.updateFarmerProfile({
+          id: tempSession.user.id,
+          name: data.farmer.personal_details.farmer_name,
+          mobile: data.farmer.personal_details.mobile_number,
+          village: data.farmer.land_details.village,
+          district: data.farmer.land_details.district,
+          state: data.farmer.land_details.state,
+        });
+
+        showToast('Farmer registration completed successfully.', 'success');
+        
+        loginAsFarmer({
+          ...tempSession.user,
+          name: data.farmer.personal_details.farmer_name,
+          mobile: data.farmer.personal_details.mobile_number,
+          village: data.farmer.land_details.village,
+          district: data.farmer.land_details.district,
+          state: data.farmer.land_details.state,
+        }, tempSession.token);
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Registration failed', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -294,47 +329,6 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
             {/* Invisible reCAPTCHA container for Resend */}
             <div id="recaptcha-container" />
 
-            {/* Profile Fields on Registration / Login */}
-            <div className="space-y-2 pt-1 border-t border-gray-100">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
-                Farmer Profile Details
-              </span>
-
-              <div>
-                <label className="font-bold text-xs text-km-textPrimary block mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name (e.g. Ramesh Kumar)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:ring-2 focus:ring-km-primary focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <label className="font-bold text-km-textPrimary block mb-1">Village / Town</label>
-                  <input
-                    type="text"
-                    value={village}
-                    onChange={(e) => setVillage(e.target.value)}
-                    placeholder="Village Name"
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-km-primary focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-km-textPrimary block mb-1">District</label>
-                  <input
-                    type="text"
-                    value={district}
-                    onChange={(e) => setDistrict(e.target.value)}
-                    placeholder="District"
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-km-primary focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
@@ -360,6 +354,14 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
         
         {step === 'otp' && (import.meta as any).env.VITE_HACKATHON_OTP_MODE === 'true' && mobile.replace(/\D/g, '') === '8903732621' && (
           <AdminOTPPanel onFillOTP={(code) => setOtp(code)} mobile={mobile.replace(/\D/g, '')} />
+        )}
+
+        {step === 'registration' && (
+          <FarmerRegistrationForm 
+            initialMobile={mobile.replace(/\D/g, '')} 
+            onSubmit={handleRegistrationSubmit} 
+            isLoading={isLoading} 
+          />
         )}
       </div>
     </div>
