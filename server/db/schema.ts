@@ -2,6 +2,9 @@ export const CREATE_TABLES_SQL = `
 -- Farmers Table
 CREATE TABLE IF NOT EXISTS farmers (
   id TEXT PRIMARY KEY,
+  firebase_uid TEXT UNIQUE,
+  phone_number TEXT,
+  phone_verified INTEGER DEFAULT 1,
   name TEXT NOT NULL,
   mobile TEXT UNIQUE NOT NULL,
   language TEXT DEFAULT 'Tamil',

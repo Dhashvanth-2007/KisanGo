@@ -86,6 +86,13 @@ export const FarmerRegistrationForm: React.FC<FarmerRegistrationFormProps> = ({ 
   const [photo, setPhoto] = useState<File | null>(null);
   const [landDoc, setLandDoc] = useState<File | null>(null);
 
+  // Bank Details
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [branchName, setBranchName] = useState('');
+
   const [error, setError] = useState('');
 
   const addLandParcel = () => setLandParcels([...landParcels, { pattaNo: '', surveyNo: '' }]);
@@ -167,6 +174,13 @@ export const FarmerRegistrationForm: React.FC<FarmerRegistrationFormProps> = ({ 
         },
         total_land: Number(totalLand),
         crops: selectedCrops,
+        bank_details: {
+          account_holder_name: bankAccountName || farmerName,
+          account_number: accountNumber,
+          ifsc_code: ifscCode,
+          bank_name: bankName,
+          branch_name: branchName
+        },
         documents: {
           aadhaar_farmer_photo: photo ? photo.name : "",
           land_document: landDoc ? landDoc.name : ""
@@ -391,9 +405,56 @@ export const FarmerRegistrationForm: React.FC<FarmerRegistrationFormProps> = ({ 
           </div>
         </div>
 
+        {/* SECTION: Bank Details */}
+        <div>
+          <h3 className="font-black text-lg text-km-textPrimary mb-4 border-b pb-2">4. Bank Account Details</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Account Holder Name</label>
+              <input
+                type="text"
+                value={bankAccountName}
+                onChange={(e) => setBankAccountName(e.target.value)}
+                placeholder="Name as per Bank Passbook"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-km-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Bank Account Number</label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder="Enter Account Number"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-km-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">IFSC Code</label>
+              <input
+                type="text"
+                value={ifscCode}
+                onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                placeholder="e.g. SBIN0001234"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-km-primary outline-none uppercase"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Bank & Branch Name</label>
+              <input
+                type="text"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g. SBI, Main Branch"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-km-primary outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* SECTION: Document Upload */}
         <div>
-          <h3 className="font-black text-lg text-km-textPrimary mb-4 border-b pb-2">4. Document Upload</h3>
+          <h3 className="font-black text-lg text-km-textPrimary mb-4 border-b pb-2">5. Document Upload</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-gray-700 block mb-1">Upload Aadhaar and Farmer Photo</label>

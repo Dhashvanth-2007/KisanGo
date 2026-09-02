@@ -6,6 +6,8 @@ export interface Farmer {
   id: string;
   name: string;
   mobile: string;
+  phone_number?: string;
+  phone_verified?: boolean | number;
   language: LanguageCode;
   village: string;
   district: string;

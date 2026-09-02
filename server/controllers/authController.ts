@@ -60,11 +60,21 @@ export const verifyFarmerOTP = (req: Request, res: Response): void => {
       otpStore.delete(cleanMobile);
     }
 
-    let farmer = db.prepare('SELECT * FROM farmers WHERE mobile = ?').get(cleanMobile) as any;
+    const formattedPhone = cleanMobile ? (cleanMobile.startsWith('+91') ? cleanMobile : `+91${cleanMobile}`) : null;
+    const uid = firebaseUid || null;
+
+    // First search by firebase_uid if provided, then by mobile
+    let farmer: any = null;
+    if (uid) {
+      farmer = db.prepare('SELECT * FROM farmers WHERE firebase_uid = ?').get(uid);
+    }
+    if (!farmer && cleanMobile) {
+      farmer = db.prepare('SELECT * FROM farmers WHERE mobile = ?').get(cleanMobile);
+    }
 
     if (!farmer) {
       // Create new farmer profile
-      const id = `farmer-${Date.now()}`;
+      const id = uid ? `farmer-${uid.slice(0, 12)}` : `farmer-${Date.now()}`;
       const farmerName = name?.trim() || (cleanMobile === '9876543210' ? 'Ravi Kumar' : 'Farmer ' + cleanMobile.slice(-4));
       const farmerLang = language || 'Tamil';
       const farmerVillage = village?.trim() || 'Vengikkal Village';
@@ -74,28 +84,33 @@ export const verifyFarmerOTP = (req: Request, res: Response): void => {
       const lng = longitude || 79.0747;
 
       db.prepare(`
-        INSERT INTO farmers (id, name, mobile, language, village, district, state, latitude, longitude)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(id, farmerName, cleanMobile, farmerLang, farmerVillage, farmerDistrict, farmerState, lat, lng);
+        INSERT INTO farmers (id, firebase_uid, phone_number, phone_verified, name, mobile, language, village, district, state, latitude, longitude)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, uid, formattedPhone, 1, farmerName, cleanMobile, farmerLang, farmerVillage, farmerDistrict, farmerState, lat, lng);
 
       farmer = db.prepare('SELECT * FROM farmers WHERE id = ?').get(id);
     } else {
-      // Existing farmer: update with any provided details if user entered a new name/village/language!
+      // Existing farmer: update with firebase_uid and any provided details
       const updatedName = (name && name.trim()) ? name.trim() : farmer.name;
       const updatedVillage = (village && village.trim()) ? village.trim() : farmer.village;
       const updatedDistrict = (district && district.trim()) ? district.trim() : farmer.district;
       const updatedState = (state && state.trim()) ? state.trim() : farmer.state;
       const updatedLang = (language && language.trim()) ? language.trim() : farmer.language;
+      const updatedUid = uid || farmer.firebase_uid || null;
+      const updatedPhone = formattedPhone || farmer.phone_number || null;
 
       db.prepare(`
         UPDATE farmers 
-        SET name = ?,
+        SET firebase_uid = COALESCE(?, firebase_uid),
+            phone_number = COALESCE(?, phone_number),
+            phone_verified = 1,
+            name = ?,
             village = ?,
             district = ?,
             state = ?,
             language = ?
         WHERE id = ?
-      `).run(updatedName, updatedVillage, updatedDistrict, updatedState, updatedLang, farmer.id);
+      `).run(updatedUid, updatedPhone, updatedName, updatedVillage, updatedDistrict, updatedState, updatedLang, farmer.id);
 
       farmer = db.prepare('SELECT * FROM farmers WHERE id = ?').get(farmer.id);
     }

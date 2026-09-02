@@ -197,6 +197,18 @@ export const db = {
 export async function initDatabase(): Promise<void> {
   const dbInstance = await getDb();
   dbInstance.exec(CREATE_TABLES_SQL);
+
+  // Auto-migrate columns if database file already exists
+  try {
+    dbInstance.exec('ALTER TABLE farmers ADD COLUMN firebase_uid TEXT UNIQUE;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE farmers ADD COLUMN phone_number TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE farmers ADD COLUMN phone_verified INTEGER DEFAULT 1;');
+  } catch (e) {}
+
   saveDbToFile();
   console.log('✅ SQLite Database (via SQL.js WASM) initialized & schema applied.');
 }
