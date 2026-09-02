@@ -31,11 +31,35 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
   const [name, setName] = useState('Ravi Kumar');
   const [village, setVillage] = useState('Vengikkal Village');
   const [district, setDistrict] = useState('Tiruvannamalai');
+
   const [isLoading, setIsLoading] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
+  
+  const [isRecaptchaVerified, setIsRecaptchaVerified] = useState(false);
 
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
+
+  useEffect(() => {
+    if (step === 'mobile') {
+      setIsRecaptchaVerified(false);
+      try {
+        const verifier = initRecaptchaVerifier(
+          'recaptcha-container',
+          () => {
+            showToast('reCAPTCHA expired. Please verify again.', 'warning');
+            setIsRecaptchaVerified(false);
+          },
+          () => {
+            setIsRecaptchaVerified(true);
+          }
+        );
+        verifier.render();
+      } catch (err) {
+        console.warn('Failed to initialize ReCaptcha:', err);
+      }
+    }
+  }, [step]);
 
   // 60-Second Resend Countdown Timer
   useEffect(() => {
@@ -79,10 +103,10 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
 
     setIsLoading(true);
     try {
-      // 1. Initialize Firebase RecaptchaVerifier
-      const verifier = initRecaptchaVerifier('recaptcha-container', () => {
-        showToast('reCAPTCHA expired. Please try sending OTP again.', 'warning');
-      });
+      const verifier = (window as any).recaptchaVerifier;
+      if (!verifier) {
+        throw new Error("reCAPTCHA not initialized");
+      }
 
       // 2. Call Firebase signInWithPhoneNumber (E.164: +91XXXXXXXXXX)
       const confirmation = await sendFirebasePhoneOTP(cleanMobile, verifier);
@@ -116,7 +140,33 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
 
   const handleResendOTP = async () => {
     if (!canResend || isLoading) return;
-    await handleSendOTP();
+    
+    setIsLoading(true);
+    try {
+      const verifier = initRecaptchaVerifier(
+        'recaptcha-container-resend',
+        () => {
+          showToast('reCAPTCHA expired. Please try sending OTP again.', 'warning');
+        },
+        undefined,
+        'invisible'
+      );
+
+      const cleanMobile = mobile.trim().replace(/\D/g, '');
+      const confirmation = await sendFirebasePhoneOTP(cleanMobile, verifier);
+      confirmationResultRef.current = confirmation;
+
+      showToast(`OTP resent successfully to +91 ${cleanMobile}`, 'success');
+      setCountdown(60);
+      setCanResend(false);
+      setOtp('');
+    } catch (err: any) {
+      console.error('Resend OTP Error:', err);
+      const friendlyMsg = parseFirebasePhoneAuthError(err);
+      showToast(friendlyMsg || 'Failed to resend OTP', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
@@ -261,12 +311,12 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
               </div>
             </div>
 
-            {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
-            <div id="recaptcha-container" />
+            {/* Visible reCAPTCHA container for Firebase Phone Auth */}
+            <div id="recaptcha-container" className="flex justify-center mb-4" />
 
             <button
               type="submit"
-              disabled={isLoading || mobile.length !== 10}
+              disabled={isLoading || mobile.length !== 10 || !isRecaptchaVerified}
               className="w-full py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-800/20 transition-all disabled:opacity-50"
             >
               <span>{isLoading ? 'Sending OTP...' : t('send_otp')}</span>
@@ -327,7 +377,7 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
             </div>
 
             {/* Invisible reCAPTCHA container for Resend */}
-            <div id="recaptcha-container" />
+            <div id="recaptcha-container-resend" />
 
             <div className="flex items-center gap-2 pt-2">
               <button

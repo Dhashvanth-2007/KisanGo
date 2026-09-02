@@ -53,7 +53,9 @@ export function formatToE164(mobileNumber: string): string {
  */
 export function initRecaptchaVerifier(
   containerId: string = 'recaptcha-container',
-  onExpired?: () => void
+  onExpired?: () => void,
+  onSuccess?: () => void,
+  size: 'normal' | 'invisible' = 'normal'
 ): RecaptchaVerifier {
   // Clear any existing global verifier if present
   if ((window as any).recaptchaVerifier) {
@@ -66,12 +68,12 @@ export function initRecaptchaVerifier(
   }
 
   const verifier = new RecaptchaVerifier(auth, containerId, {
-    size: 'invisible',
+    size: size,
     callback: () => {
-      // reCAPTCHA solved - allow signInWithPhoneNumber
+      // reCAPTCHA solved
+      if (onSuccess) onSuccess();
     },
     'expired-callback': () => {
-      console.warn('reCAPTCHA expired, resetting...');
       if (onExpired) onExpired();
     }
   });
