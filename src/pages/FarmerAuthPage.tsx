@@ -41,23 +41,47 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    let verifier: any = null;
+
     if (step === 'mobile') {
       setIsRecaptchaVerified(false);
-      try {
-        const verifier = initRecaptchaVerifier(
-          'recaptcha-container',
-          () => {
-            showToast('reCAPTCHA expired. Please verify again.', 'warning');
-            setIsRecaptchaVerified(false);
-          },
-          () => {
-            setIsRecaptchaVerified(true);
-          }
-        );
-        verifier.render();
-      } catch (err) {
-        console.warn('Failed to initialize ReCaptcha:', err);
-      }
+      
+      // Delay initialization slightly to ensure DOM is ready and debounce Strict Mode double-invocations
+      const timer = setTimeout(() => {
+        if (!mounted) return;
+        
+        try {
+          verifier = initRecaptchaVerifier(
+            'recaptcha-container',
+            () => {
+              if (mounted) {
+                showToast('reCAPTCHA expired. Please verify again.', 'warning');
+                setIsRecaptchaVerified(false);
+              }
+            },
+            () => {
+              if (mounted) setIsRecaptchaVerified(true);
+            }
+          );
+          
+          verifier.render().catch((err: any) => {
+            console.warn('Failed to render ReCaptcha:', err);
+          });
+        } catch (err) {
+          console.warn('Failed to initialize ReCaptcha:', err);
+        }
+      }, 100);
+
+      return () => {
+        mounted = false;
+        clearTimeout(timer);
+        if (verifier) {
+          try {
+            verifier.clear();
+          } catch (e) {}
+        }
+      };
     }
   }, [step]);
 
