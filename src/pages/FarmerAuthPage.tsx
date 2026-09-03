@@ -100,7 +100,24 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
       setOtpDigits(['', '', '', '', '', '']);
       setStep('otp');
     } catch (err: any) {
-      console.error('Firebase Phone Auth Error:', err);
+      console.warn('Firebase Phone Auth returned error, activating fallback gateway:', err);
+
+      // If Firebase provider is not enabled in console or fails due to network/config, provide seamless gateway fallback
+      try {
+        const fallbackRes = await api.sendFarmerOTP(cleanMobile);
+        if (fallbackRes.success) {
+          showToast(`OTP sent successfully to ${maskPhoneNumber(cleanMobile)}`, 'success');
+          confirmationResultRef.current = null; // Mark that fallback session is active
+          setCountdown(30);
+          setCanResend(false);
+          setOtpDigits(['', '', '', '', '', '']);
+          setStep('otp');
+          return;
+        }
+      } catch (fallbackErr) {
+        console.error('Fallback OTP error:', fallbackErr);
+      }
+
       const friendlyMsg = parseFirebasePhoneAuthError(err);
       showToast(friendlyMsg, 'error');
     } finally {
@@ -131,7 +148,19 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
       setCanResend(false);
       setOtpDigits(['', '', '', '', '', '']);
     } catch (err: any) {
-      console.error('Resend OTP Error:', err);
+      console.warn('Firebase resend failed, trying fallback:', err);
+      try {
+        const fallbackRes = await api.sendFarmerOTP(cleanMobile);
+        if (fallbackRes.success) {
+          showToast(`OTP resent successfully to ${maskPhoneNumber(cleanMobile)}`, 'success');
+          confirmationResultRef.current = null;
+          setCountdown(30);
+          setCanResend(false);
+          setOtpDigits(['', '', '', '', '', '']);
+          return;
+        }
+      } catch (fallbackErr) {}
+
       const friendlyMsg = parseFirebasePhoneAuthError(err);
       showToast(friendlyMsg, 'error');
     } finally {
@@ -194,38 +223,34 @@ export const FarmerAuthPage: React.FC<FarmerAuthPageProps> = ({ onBack }) => {
       return;
     }
 
-    if (!confirmationResultRef.current) {
-      showToast('OTP session expired. Please request a new OTP.', 'error');
-      setCanResend(true);
-      return;
-    }
-
     setIsLoading(true);
     try {
-      // 1. Verify OTP with Firebase confirmationResult
+      // 1. Verify OTP with Firebase confirmationResult if active
       let firebaseUid = '';
       let userPhoneNumber = '';
 
-      try {
-        const userCredential = await confirmFirebaseOTP(confirmationResultRef.current, cleanOtp);
-        if (userCredential && userCredential.user) {
-          firebaseUid = userCredential.user.uid;
-          userPhoneNumber = userCredential.user.phoneNumber || formatToE164(cleanMobile);
+      if (confirmationResultRef.current) {
+        try {
+          const userCredential = await confirmFirebaseOTP(confirmationResultRef.current, cleanOtp);
+          if (userCredential && userCredential.user) {
+            firebaseUid = userCredential.user.uid;
+            userPhoneNumber = userCredential.user.phoneNumber || formatToE164(cleanMobile);
+          }
+        } catch (firebaseErr: any) {
+          console.error('Firebase OTP Confirmation Error:', firebaseErr);
+          const errMessage = parseFirebasePhoneAuthError(firebaseErr);
+          showToast(errMessage, 'error');
+          setIsLoading(false);
+          return;
         }
-      } catch (firebaseErr: any) {
-        console.error('Firebase OTP Confirmation Error:', firebaseErr);
-        const errMessage = parseFirebasePhoneAuthError(firebaseErr);
-        showToast(errMessage, 'error');
-        setIsLoading(false);
-        return;
       }
 
-      // 2. Connect verified Firebase session to KisanGo Backend Database
+      // 2. Connect verified session to KisanGo Backend Database
       const res = await api.verifyFarmerOTP({
         mobile: cleanMobile,
         otp: cleanOtp,
         firebaseUid,
-        isFirebaseVerified: true
+        isFirebaseVerified: Boolean(firebaseUid)
       });
 
       if (res.success && res.user) {
