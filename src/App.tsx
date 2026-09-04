@@ -198,6 +198,8 @@ export const App: React.FC = () => {
           <FarmerHomePage
             activeBooking={activeBooking}
             recommendedCenter={centers.find((c) => c.ai_recommended) || centers[0] || null}
+            centers={centers}
+            onRefreshBooking={fetchActiveBooking}
             onNavigate={(tab) => setActiveTab(tab as any)}
             onOpenVoiceAssistant={() => setIsVoiceModalOpen(true)}
             onOpenReportProblem={() => setIsReportProblemOpen(true)}
@@ -218,6 +220,7 @@ export const App: React.FC = () => {
         {activeTab === 'my-slot' && (
           <MySlotPage
             booking={activeBooking}
+            centers={centers}
             onNavigateToFindCenter={() => setActiveTab('find-center')}
             onRefreshBooking={fetchActiveBooking}
           />

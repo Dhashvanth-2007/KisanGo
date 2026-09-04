@@ -208,6 +208,51 @@ export async function initDatabase(): Promise<void> {
   try {
     dbInstance.exec('ALTER TABLE farmers ADD COLUMN phone_verified INTEGER DEFAULT 1;');
   } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE slots ADD COLUMN schedule_id TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE slots ADD COLUMN master_start_time TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE slots ADD COLUMN master_end_time TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE slots ADD COLUMN sub_start_time TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE slots ADD COLUMN sub_end_time TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE slots ADD COLUMN reserved_count INTEGER DEFAULT 0;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE slots ADD COLUMN available_count INTEGER DEFAULT 2;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN date TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN day_name TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN master_slot_id TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN sub_slot_id TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN token_number TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN actual_arrival_time TEXT;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN actual_waiting_minutes INTEGER;');
+  } catch (e) {}
+  try {
+    dbInstance.exec('ALTER TABLE bookings ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;');
+  } catch (e) {}
 
   saveDbToFile();
   console.log('✅ SQLite Database (via SQL.js WASM) initialized & schema applied.');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Officer, Slot, MasterSlotWindow, SlotSummary, ScheduleConfig } from '../../types';
+import { Officer, Slot, MasterSlotWindow, SlotSummary, ScheduleConfig, DateAvailability } from '../../types';
 import {
   Calendar,
   Clock,
@@ -16,7 +16,12 @@ import {
   Layers,
   ChevronRight,
   Sparkles,
-  Info
+  Info,
+  CalendarDays,
+  Sun,
+  Coffee,
+  Check,
+  Zap
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { useToast } from '../../context/ToastContext';
@@ -50,6 +55,11 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
   const [customReason, setCustomReason] = useState<string>('');
   const [isSubmittingReservation, setIsSubmittingReservation] = useState(false);
 
+  // 14-Day Calendar & Bulk Schedule State
+  const [calendarDates, setCalendarDates] = useState<DateAvailability[]>([]);
+  const [isBulkGenerating, setIsBulkGenerating] = useState(false);
+  const [isUpdatingDayStatus, setIsUpdatingDayStatus] = useState(false);
+
   // Schedule Config Modal State
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [configOpeningTime, setConfigOpeningTime] = useState<string>('09:00 AM');
@@ -58,6 +68,65 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
   const [configBreakEnd, setConfigBreakEnd] = useState<string>('02:00 PM');
   const [configFarmersPerSubSlot, setConfigFarmersPerSubSlot] = useState<number>(2);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  const fetchCalendar = async () => {
+    try {
+      const res = await api.getCenterCalendar(centerId);
+      if (res.success && res.data) {
+        setCalendarDates(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleBulkGenerate = async (days = 14) => {
+    setIsBulkGenerating(true);
+    try {
+      const res = await api.bulkGenerateSchedule({
+        centerId,
+        days,
+        openingTime: configOpeningTime,
+        closingTime: configClosingTime,
+        farmersPerSubSlot: configFarmersPerSubSlot
+      });
+      if (res.success) {
+        showToast(`Successfully generated 14-Day Procurement Schedule!`, 'success');
+        fetchCalendar();
+        fetchSlotSummary();
+      } else {
+        showToast(res.message || 'Failed to generate schedule', 'error');
+      }
+    } catch (e: any) {
+      showToast(e.message || 'Error generating schedule', 'error');
+    } finally {
+      setIsBulkGenerating(false);
+    }
+  };
+
+  const handleUpdateDayStatus = async (status: string, isWorkingDay: boolean) => {
+    setIsUpdatingDayStatus(true);
+    try {
+      const res = await api.updateDateScheduleStatus({
+        centerId,
+        date: selectedDate,
+        status,
+        isWorkingDay,
+        notes: status === 'HOLIDAY' ? 'Government Holiday' : status === 'CLOSED' ? 'Facility Maintenance Closure' : 'Active Working Day'
+      });
+      if (res.success) {
+        showToast(`Date ${selectedDate} updated to ${status}`, 'success');
+        fetchCalendar();
+        fetchSlotSummary();
+      } else {
+        showToast(res.message || 'Failed to update date status', 'error');
+      }
+    } catch (e: any) {
+      showToast(e.message || 'Error updating date status', 'error');
+    } finally {
+      setIsUpdatingDayStatus(false);
+    }
+  };
 
   const fetchSlotSummary = async () => {
     setIsLoading(true);
@@ -82,6 +151,7 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
   };
 
   useEffect(() => {
+    fetchCalendar();
     fetchSlotSummary();
   }, [centerId, selectedDate]);
 
@@ -230,6 +300,17 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
             />
           </div>
 
+          {/* Bulk Generate 14-Day Schedule Button */}
+          <button
+            type="button"
+            onClick={() => handleBulkGenerate(14)}
+            disabled={isBulkGenerating}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-2xl text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+          >
+            <Zap className={`w-4 h-4 text-amber-300 ${isBulkGenerating ? 'animate-spin' : ''}`} />
+            <span>{isBulkGenerating ? 'Generating...' : '⚡ Bulk Generate 14 Days'}</span>
+          </button>
+
           {/* Schedule Config Button */}
           <button
             type="button"
@@ -243,12 +324,147 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
           {/* Refresh Button */}
           <button
             type="button"
-            onClick={fetchSlotSummary}
+            onClick={() => {
+              fetchCalendar();
+              fetchSlotSummary();
+            }}
             disabled={isLoading}
             className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl transition-colors disabled:opacity-50"
-            title="Refresh Slots"
+            title="Refresh Slots & Calendar"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* 14-Day Interactive Calendar Strip */}
+      {calendarDates.length > 0 && (
+        <div className="bg-white p-4 rounded-3xl border border-gray-200/80 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-km-primary" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-km-textPrimary">
+                14-Day Schedule Overview
+              </h3>
+            </div>
+            <span className="text-[11px] text-gray-500 font-medium">
+              Click a date to manage its hourly slots & bay capacity
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-thin">
+            {calendarDates.map((day) => {
+              const isSelected = day.date === selectedDate;
+              const isHoliday = day.status === 'HOLIDAY';
+              const isClosed = day.status === 'CLOSED';
+              const isFull = day.status === 'FULL';
+              const isLimited = day.status === 'LIMITED_AVAILABILITY';
+
+              return (
+                <button
+                  key={day.date}
+                  type="button"
+                  onClick={() => setSelectedDate(day.date)}
+                  className={`flex flex-col items-center min-w-[76px] p-2.5 rounded-2xl border transition-all shrink-0 ${
+                    isSelected
+                      ? 'border-km-primary bg-emerald-50/80 ring-2 ring-emerald-500/30 shadow-xs'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-extrabold uppercase text-gray-400">
+                    {(day.dayName || day.day_name || '').slice(0, 3)}
+                  </span>
+                  <span className="text-sm font-black text-km-textPrimary font-mono">
+                    {day.date.split('-')[2]}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    {new Date(day.date).toLocaleDateString('en-IN', { month: 'short' })}
+                  </span>
+
+                  {/* Status Badge */}
+                  <span
+                    className={`mt-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                      isHoliday
+                        ? 'bg-purple-100 text-purple-700'
+                        : isClosed
+                        ? 'bg-gray-200 text-gray-700'
+                        : isFull
+                        ? 'bg-rose-100 text-rose-700'
+                        : isLimited
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    {isHoliday ? 'Holiday' : isClosed ? 'Closed' : isFull ? 'Full' : `${day.remainingSlots ?? day.available_slots ?? 0} Slots`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Selected Date Status & Quick Toggle Bar */}
+      <div className="bg-white p-4 rounded-3xl border border-gray-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-km-primary flex items-center justify-center font-black">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-km-textPrimary">
+                Selected Date: {selectedDate}
+              </h3>
+              {calendarDates.find((d) => d.date === selectedDate) && (
+                <span
+                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                    calendarDates.find((d) => d.date === selectedDate)?.status === 'HOLIDAY'
+                      ? 'bg-purple-100 text-purple-800'
+                      : calendarDates.find((d) => d.date === selectedDate)?.status === 'CLOSED'
+                      ? 'bg-gray-200 text-gray-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  {calendarDates.find((d) => d.date === selectedDate)?.status}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              Toggle facility operations or mark special holidays for this date
+            </p>
+          </div>
+        </div>
+
+        {/* Action Status Toggles */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => handleUpdateDayStatus('AVAILABLE', true)}
+            disabled={isUpdatingDayStatus}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+          >
+            <Sun className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Mark Open / Working Day</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleUpdateDayStatus('HOLIDAY', false)}
+            disabled={isUpdatingDayStatus}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+          >
+            <Coffee className="w-3.5 h-3.5 text-purple-600" />
+            <span>Mark as Holiday</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleUpdateDayStatus('CLOSED', false)}
+            disabled={isUpdatingDayStatus}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+          >
+            <Ban className="w-3.5 h-3.5 text-gray-600" />
+            <span>Mark Closed</span>
           </button>
         </div>
       </div>

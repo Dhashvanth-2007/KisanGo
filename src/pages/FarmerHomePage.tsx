@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 import { Booking, ProcurementCenter } from '../types';
+import { api } from '../services/api';
+import { RescheduleModal } from '../components/booking/RescheduleModal';
 import {
   MapPin,
   Ticket,
@@ -13,7 +16,11 @@ import {
   Calendar,
   Clock,
   CheckCircle2,
-  ShieldCheck
+  ShieldCheck,
+  CalendarClock,
+  Navigation,
+  XCircle,
+  Wheat
 } from 'lucide-react';
 import { RatingStars } from '../components/common/RatingStars';
 import { Badge } from '../components/common/Badge';
@@ -21,6 +28,8 @@ import { Badge } from '../components/common/Badge';
 interface FarmerHomePageProps {
   activeBooking: Booking | null;
   recommendedCenter: ProcurementCenter | null;
+  centers?: ProcurementCenter[];
+  onRefreshBooking?: () => void;
   onNavigate: (tab: string) => void;
   onOpenVoiceAssistant: () => void;
   onOpenReportProblem: () => void;
@@ -29,12 +38,59 @@ interface FarmerHomePageProps {
 export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
   activeBooking,
   recommendedCenter,
+  centers = [],
+  onRefreshBooking,
   onNavigate,
   onOpenVoiceAssistant,
   onOpenReportProblem
 }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { showToast } = useToast();
+
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancelBooking = async () => {
+    if (!activeBooking) return;
+    if (!window.confirm('Are you sure you want to cancel this procurement slot booking?')) return;
+
+    setIsCancelling(true);
+    try {
+      const res = await api.cancelBooking(activeBooking.id);
+      if (res.success) {
+        showToast('Booking cancelled successfully', 'info');
+        if (onRefreshBooking) onRefreshBooking();
+      } else {
+        showToast(res.message || 'Failed to cancel', 'error');
+      }
+    } catch (e: any) {
+      showToast(e.message || 'Failed to cancel booking', 'error');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleOpenDirections = () => {
+    if (!activeBooking) return;
+    const centerObj = centers.find((c) => c.id === activeBooking.center_id);
+    const lat = centerObj?.latitude || 12.2253;
+    const lng = centerObj?.longitude || 79.0747;
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+  };
+
+  // Calculate days/hours until appointment
+  const getAppointmentCountdown = () => {
+    if (!activeBooking?.date) return 'Scheduled for Today';
+    const targetDate = new Date(`${activeBooking.date}T${activeBooking.sub_start_time || activeBooking.slot_start || '09:00'}:00`);
+    const now = new Date();
+    const diffMs = targetDate.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Appointment Window Active Now';
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays > 0) return `in ${diffDays} day${diffDays > 1 ? 's' : ''} (${diffHours % 24} hrs)`;
+    return `in ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 pb-24">
@@ -86,54 +142,109 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
         </div>
       </div>
 
-      {/* Active Booking Banner (if present) */}
+      {/* My Upcoming Procurement Banner (if active booking exists) */}
       {activeBooking && activeBooking.status !== 'Cancelled' && (
         <div className="bg-white rounded-3xl border-2 border-emerald-500 shadow-km-md p-5 space-y-4 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                {t('active_slot_token')}
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-emerald-700" />
+                <span>My Upcoming Procurement</span>
               </span>
-              <span className="font-mono text-base font-black text-km-primary">{activeBooking.token_number}</span>
+              <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                ⏳ {getAppointmentCountdown()}
+              </span>
             </div>
-            <Badge variant="success" size="sm">
-              {activeBooking.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-black text-km-primary bg-gray-100 px-2.5 py-1 rounded-xl">
+                {activeBooking.token_number}
+              </span>
+              <Badge variant="success" size="sm">
+                {activeBooking.status}
+              </Badge>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          {/* Details Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            {/* Date & Time */}
+            <div className="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-100">
+              <span className="text-emerald-800 block font-semibold text-[10px]">📅 Date & Time Window</span>
+              <span className="font-black text-sm text-emerald-950 block">
+                {activeBooking.date ? `${activeBooking.date} (${activeBooking.day_name || 'Day'})` : 'Today'}
+              </span>
+              <span className="text-xs text-emerald-700 font-bold">
+                {activeBooking.sub_start_time ? `${activeBooking.sub_start_time} - ${activeBooking.sub_end_time}` : `${activeBooking.slot_start} - ${activeBooking.slot_end}`}
+              </span>
+            </div>
+
+            {/* Center Info */}
             <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100">
               <span className="text-gray-400 block font-semibold text-[10px]">{t('procurement_center')}</span>
               <span className="font-bold text-km-textPrimary block truncate">{activeBooking.center_name}</span>
-              <span className="text-gray-500">{activeBooking.slot_start} - {activeBooking.slot_end}</span>
+              <span className="text-gray-500 truncate block">{activeBooking.crop_name || 'Multi-Crop'} ({activeBooking.expected_quantity || 1000} kg)</span>
             </div>
 
-            <div className="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-100">
-              <span className="text-emerald-800 block font-semibold text-[10px]">{t('current_queue')}</span>
-              <span className="font-black text-lg text-emerald-950">
+            {/* Current Queue */}
+            <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-100">
+              <span className="text-amber-800 block font-semibold text-[10px]">{t('current_queue')}</span>
+              <span className="font-black text-lg text-amber-950">
                 #{activeBooking.live_queue_position || activeBooking.original_queue_pos || 1}
               </span>
-              <span className="text-emerald-700 block font-medium">
+              <span className="text-amber-700 block font-medium">
                 {Math.max(0, (activeBooking.live_queue_position || 1) - 1)} {t('vehicles_ahead')}
               </span>
             </div>
 
+            {/* Recommended Departure */}
             <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-100">
               <span className="text-blue-800 block font-semibold text-[10px]">{t('recommended_departure')}</span>
               <span className="font-black text-lg text-blue-950 font-mono">
                 {activeBooking.recommended_departure_time || '09:05 AM'}
               </span>
-              <span className="text-blue-700 block font-medium">{t('gps_dynamic_routing')}</span>
+              <span className="text-blue-700 block font-medium">Auto-Optimized Routing</span>
             </div>
           </div>
 
-          <button
-            onClick={() => onNavigate('my-slot')}
-            className="w-full py-3 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-800/20 transition-all"
-          >
-            <span>{t('view_token_queue')}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {/* Action Buttons Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            {/* Reschedule Button */}
+            <button
+              onClick={() => setIsRescheduleOpen(true)}
+              className="py-2.5 px-3 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 shadow-2xs transition-all"
+            >
+              <CalendarClock className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Reschedule Slot</span>
+            </button>
+
+            {/* Directions Button */}
+            <button
+              onClick={handleOpenDirections}
+              className="py-2.5 px-3 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 shadow-2xs transition-all"
+            >
+              <Navigation className="w-3.5 h-3.5 text-blue-600" />
+              <span>Directions</span>
+            </button>
+
+            {/* View Queue Button */}
+            <button
+              onClick={() => onNavigate('my-slot')}
+              className="py-2.5 px-3 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+            >
+              <span>{t('view_token_queue')}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Cancel Button */}
+            <button
+              onClick={handleCancelBooking}
+              disabled={isCancelling}
+              className="py-2.5 px-3 bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 shadow-2xs transition-all disabled:opacity-50"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>Cancel</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -257,6 +368,18 @@ export const FarmerHomePage: React.FC<FarmerHomePageProps> = ({
           <span className="text-[10px] text-km-textSecondary">{t('one_min_complaint')}</span>
         </button>
       </div>
+
+      {/* Reschedule Modal */}
+      <RescheduleModal
+        isOpen={isRescheduleOpen}
+        onClose={() => setIsRescheduleOpen(false)}
+        booking={activeBooking}
+        centers={centers}
+        onRescheduled={() => {
+          setIsRescheduleOpen(false);
+          if (onRefreshBooking) onRefreshBooking();
+        }}
+      />
     </div>
   );
 };

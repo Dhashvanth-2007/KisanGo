@@ -93,6 +93,50 @@ export interface Slot {
   score?: number;
 }
 
+export type DateStatus =
+  | 'AVAILABLE'
+  | 'LIMITED_AVAILABILITY'
+  | 'FULL'
+  | 'CLOSED'
+  | 'HOLIDAY'
+  | 'RESERVED';
+
+export interface DateAvailability {
+  scheduleId?: string;
+  centerId: string;
+  date: string; // YYYY-MM-DD
+  formattedDate: string; // 04 Sep
+  dayName: string; // Friday
+  day_name?: string;
+  isWorkingDay: boolean;
+  openingTime?: string;
+  closingTime?: string;
+  dailyCapacity: number;
+  bookedCapacity?: number;
+  reservedCapacity?: number;
+  remainingSlots: number;
+  available_slots?: number;
+  status: DateStatus;
+  notes?: string;
+}
+
+export interface AiSlotRecommendation {
+  recommendedDate: string;
+  recommendedDateFormatted: string;
+  recommendedDay: string;
+  recommendedCenterId: string;
+  recommendedCenterName: string;
+  recommendedCenterAddress: string;
+  recommendedSlotId: string;
+  recommendedMasterWindow: string;
+  recommendedTime: string;
+  travelTimeMins: number;
+  estimatedWaitingMins: number;
+  processingMins: number;
+  totalJourneyTimeMins: number;
+  reason: string;
+}
+
 export interface MasterSlotWindow {
   master_window: string;
   start_time: string;
@@ -204,6 +248,10 @@ export interface Booking {
     | 'Payment Completed'
     | 'Cancelled';
   created_at: string;
+  updated_at?: string;
+  date?: string;
+  day_name?: string;
+  dateFormatted?: string;
   token_number?: string;
   queue_position?: number;
   original_queue_pos?: number;
@@ -213,6 +261,7 @@ export interface Booking {
   slot_end?: string;
   planned_start_time?: string;
   planned_end_time?: string;
+  actual_arrival_time?: string;
   actual_start_time?: string;
   actual_end_time?: string;
   estimated_start_time?: string;
@@ -255,6 +304,10 @@ export interface Booking {
   total_estimated_value?: number;
   master_window?: string;
   sub_slot?: string;
+  sub_start_time?: string;
+  sub_end_time?: string;
+  master_start_time?: string;
+  master_end_time?: string;
 }
 
 export interface DynamicQueueData {

@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Booking } from '../types';
+import { Booking, ProcurementCenter } from '../types';
 import { DigitalTokenCard } from '../components/token/DigitalTokenCard';
 import { TravelGuidanceCard } from '../components/token/TravelGuidanceCard';
 import { LiveQueueTracker } from '../components/queue/LiveQueueTracker';
+import { RescheduleModal } from '../components/booking/RescheduleModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
-import { Ticket, RefreshCw, XCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Ticket, RefreshCw, XCircle, ArrowRight, ShieldCheck, CalendarClock } from 'lucide-react';
 
 interface MySlotPageProps {
   booking: Booking | null;
+  centers?: ProcurementCenter[];
   onNavigateToFindCenter: () => void;
   onRefreshBooking: () => void;
 }
 
 export const MySlotPage: React.FC<MySlotPageProps> = ({
   booking,
+  centers = [],
   onNavigateToFindCenter,
   onRefreshBooking
 }) => {
@@ -25,6 +28,7 @@ export const MySlotPage: React.FC<MySlotPageProps> = ({
   const [liveQueueData, setLiveQueueData] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
 
   // Poll live queue every 5 seconds if booking is active
   useEffect(() => {
@@ -126,6 +130,14 @@ export const MySlotPage: React.FC<MySlotPageProps> = ({
             <RefreshCw className={`w-4 h-4 text-km-primary ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
           <button
+            onClick={() => setIsRescheduleOpen(true)}
+            disabled={booking.status.includes('Completed')}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition-all shadow-xs disabled:opacity-40"
+          >
+            <CalendarClock className="w-3.5 h-3.5" />
+            <span>Reschedule Slot</span>
+          </button>
+          <button
             onClick={handleCancelBooking}
             disabled={isCancelling || booking.status.includes('Completed')}
             className="flex items-center gap-1 px-3 py-2 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-colors disabled:opacity-40"
@@ -144,6 +156,18 @@ export const MySlotPage: React.FC<MySlotPageProps> = ({
 
       {/* Live Queue Tracker */}
       <LiveQueueTracker booking={booking} liveQueueData={liveQueueData} />
+
+      {/* Reschedule Modal */}
+      <RescheduleModal
+        isOpen={isRescheduleOpen}
+        onClose={() => setIsRescheduleOpen(false)}
+        booking={booking}
+        centers={centers}
+        onRescheduled={() => {
+          setIsRescheduleOpen(false);
+          onRefreshBooking();
+        }}
+      />
     </div>
   );
 };

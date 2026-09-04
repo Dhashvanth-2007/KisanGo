@@ -25,8 +25,23 @@ function minutesToTime(totalMins: number): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
+export function getDayName(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long' });
+}
+
+export function getFormattedDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+}
+
+export function isPastDate(dateStr: string): boolean {
+  const today = new Date().toISOString().split('T')[0];
+  return dateStr < today;
+}
+
 // Helper to ensure 1-Hour Master Windows + 4 15-Minute Sub-Slots exist for a center & date
-export function ensureCenterSlotsForDate(centerId: string, date: string): void {
+export function ensureCenterSlotsForDate(centerId: string, date: string, scheduleId?: string): void {
   const existingCount = db
     .prepare('SELECT count(*) as cnt FROM slots WHERE center_id = ? AND date = ?')
     .get(centerId, date) as { cnt: number };
@@ -58,18 +73,23 @@ export function ensureCenterSlotsForDate(centerId: string, date: string): void {
   const farmersPerSubSlot = schedule.farmers_per_sub_slot || 2;
 
   const insertSlot = db.prepare(`
-    INSERT INTO slots (id, center_id, date, master_window, start_time, end_time, duration_mins, capacity, booked_count, status, reserved_reason, reserved_by, reserved_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO slots (
+      id, center_id, schedule_id, date, master_window, master_start_time, master_end_time,
+      start_time, end_time, sub_start_time, sub_end_time, duration_mins, capacity,
+      booked_count, reserved_count, available_count, status, reserved_reason, reserved_by, reserved_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  let slotIndex = 1;
   for (let currentHour = openMins; currentHour + 60 <= closeMins; currentHour += 60) {
     // Check if this entire hour is in break time
     if (breakStartMins >= 0 && breakEndMins >= 0 && currentHour >= breakStartMins && currentHour < breakEndMins) {
       continue;
     }
 
-    const masterWindowLabel = `${minutesToTime(currentHour)} - ${minutesToTime(currentHour + 60)}`;
+    const masterStartLabel = minutesToTime(currentHour);
+    const masterEndLabel = minutesToTime(currentHour + 60);
+    const masterWindowLabel = `${masterStartLabel} - ${masterEndLabel}`;
 
     for (let subMin = 0; subMin < 60; subMin += 15) {
       const subStart = currentHour + subMin;
@@ -83,17 +103,26 @@ export function ensureCenterSlotsForDate(centerId: string, date: string): void {
       const status = isEmergencySlot ? 'Reserved' : 'Available';
       const reason = isEmergencySlot ? 'Emergency / Buffer Reserve' : null;
       const by = isEmergencySlot ? 'System Emergency Allocation' : null;
+      const reservedCount = isEmergencySlot ? farmersPerSubSlot : 0;
+      const availableCount = isEmergencySlot ? 0 : farmersPerSubSlot;
 
       insertSlot.run(
         slotId,
         centerId,
+        scheduleId || `sched-${centerId}-${date}`,
         date,
         masterWindowLabel,
+        masterStartLabel,
+        masterEndLabel,
+        subStartLabel,
+        subEndLabel,
         subStartLabel,
         subEndLabel,
         15,
         farmersPerSubSlot,
         0,
+        reservedCount,
+        availableCount,
         status,
         reason,
         by,
@@ -103,7 +132,358 @@ export function ensureCenterSlotsForDate(centerId: string, date: string): void {
   }
 }
 
-// 1. GET CENTER SLOTS (1-Hour Master Windows + 4x15-Min Sub-Slots)
+// Helper to ensure a multi-day schedule entry exists for a specific date and center
+export function ensureCenterScheduleForDate(centerId: string, date: string): any {
+  let existing = db.prepare('SELECT * FROM centre_date_schedules WHERE centre_id = ? AND date = ?').get(centerId, date) as any;
+
+  if (existing) {
+    // Recalculate dynamic capacity and status
+    const counts = db.prepare(`
+      SELECT 
+        SUM(capacity) as total_cap,
+        SUM(booked_count) as booked_cap,
+        SUM(CASE WHEN status = 'Reserved' THEN capacity ELSE 0 END) as res_cap
+      FROM slots 
+      WHERE center_id = ? AND date = ?
+    `).get(centerId, date) as any;
+
+    const totalCap = counts?.total_cap || existing.daily_capacity || 60;
+    const bookedCap = counts?.booked_cap || 0;
+    const resCap = counts?.res_cap || 0;
+    const remainingCap = Math.max(0, totalCap - bookedCap - resCap);
+
+    let calculatedStatus = existing.status;
+    if (existing.is_working_day === 0) {
+      calculatedStatus = existing.status === 'HOLIDAY' ? 'HOLIDAY' : 'CLOSED';
+    } else if (existing.status !== 'RESERVED' && existing.status !== 'HOLIDAY' && existing.status !== 'CLOSED') {
+      if (remainingCap === 0) {
+        calculatedStatus = 'FULL';
+      } else if (remainingCap <= totalCap * 0.25) {
+        calculatedStatus = 'LIMITED_AVAILABILITY';
+      } else {
+        calculatedStatus = 'AVAILABLE';
+      }
+    }
+
+    db.prepare(`
+      UPDATE centre_date_schedules
+      SET daily_capacity = ?, booked_capacity = ?, reserved_capacity = ?, remaining_capacity = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE schedule_id = ?
+    `).run(totalCap, bookedCap, resCap, remainingCap, calculatedStatus, existing.schedule_id);
+
+    return {
+      ...existing,
+      daily_capacity: totalCap,
+      booked_capacity: bookedCap,
+      reserved_capacity: resCap,
+      remaining_capacity: remainingCap,
+      status: calculatedStatus
+    };
+  }
+
+  // Create new schedule record
+  const scheduleId = `sched-${centerId}-${date}`;
+  const dayName = getDayName(date);
+
+  // Read base center configuration
+  let baseConfig = db.prepare('SELECT * FROM center_schedules WHERE center_id = ?').get(centerId) as any;
+  if (!baseConfig) {
+    baseConfig = {
+      opening_time: '09:00 AM',
+      closing_time: '05:00 PM',
+      farmers_per_sub_slot: 2
+    };
+  }
+
+  // Sunday or holidays check
+  const isSunday = dayName === 'Sunday';
+  const isWorkingDay = isSunday ? 1 : 1; // Can be configured by officer; default 1
+  const initialStatus = isWorkingDay ? 'AVAILABLE' : 'CLOSED';
+  const dailyCapacity = 60;
+
+  db.prepare(`
+    INSERT OR IGNORE INTO centre_date_schedules (
+      schedule_id, centre_id, date, day_name, is_working_day,
+      opening_time, closing_time, daily_capacity, booked_capacity, reserved_capacity, remaining_capacity,
+      status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 15, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `).run(
+    scheduleId,
+    centerId,
+    date,
+    dayName,
+    isWorkingDay,
+    baseConfig.opening_time || '09:00 AM',
+    baseConfig.closing_time || '05:00 PM',
+    dailyCapacity,
+    dailyCapacity - 15,
+    initialStatus
+  );
+
+  // Generate slots for date
+  ensureCenterSlotsForDate(centerId, date, scheduleId);
+
+  return db.prepare('SELECT * FROM centre_date_schedules WHERE schedule_id = ?').get(scheduleId);
+}
+
+// Ensure 14-day schedule horizon exists
+export function ensureMultiDaySchedules(centerId: string, daysAhead: number = 14): any[] {
+  const results: any[] = [];
+  const today = new Date();
+
+  for (let i = 0; i < daysAhead; i++) {
+    const targetDate = new Date(today.getTime() + i * 24 * 60 * 60 * 1000);
+    const dateStr = targetDate.toISOString().split('T')[0];
+    const sched = ensureCenterScheduleForDate(centerId, dateStr);
+    results.push(sched);
+  }
+
+  return results;
+}
+
+// 1. GET 14-DAY CALENDAR SCHEDULE FOR A CENTER
+export const getCenterCalendar = (req: Request, res: Response): void => {
+  try {
+    const centerId = req.params.centerId as string;
+    const days = parseInt(req.query.days as string, 10) || 14;
+
+    const center = db.prepare('SELECT * FROM procurement_centers WHERE id = ?').get(centerId) as any;
+    if (!center) {
+      res.status(404).json({ success: false, message: 'Center not found' });
+      return;
+    }
+
+    ensureMultiDaySchedules(centerId, days);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const schedules = db.prepare(`
+      SELECT * FROM centre_date_schedules
+      WHERE centre_id = ? AND date >= ?
+      ORDER BY date ASC
+      LIMIT ?
+    `).all(centerId, todayStr, days) as any[];
+
+    const calendar = schedules.map((s) => ({
+      scheduleId: s.schedule_id,
+      centerId: s.centre_id,
+      date: s.date,
+      formattedDate: getFormattedDate(s.date),
+      dayName: s.day_name,
+      isWorkingDay: Boolean(s.is_working_day),
+      openingTime: s.opening_time,
+      closingTime: s.closing_time,
+      dailyCapacity: s.daily_capacity,
+      bookedCapacity: s.booked_capacity,
+      reservedCapacity: s.reserved_capacity,
+      remainingSlots: s.remaining_capacity,
+      status: s.status, // AVAILABLE, LIMITED_AVAILABILITY, FULL, CLOSED, HOLIDAY, RESERVED
+      notes: s.notes
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        centerId,
+        centerName: center.name,
+        bookingHorizonDays: days,
+        calendar
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 2. MULTI-CENTRE PROCUREMENT OPTIONS FOR SELECTED CROP & DATE
+export const getProcurementOptions = (req: Request, res: Response): void => {
+  try {
+    const cropId = (req.query.cropId as string) || '';
+    const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const quantity = parseFloat(req.query.quantity as string) || 2000;
+    const lat = req.query.lat ? parseFloat(req.query.lat as string) : 12.2253;
+    const lng = req.query.lng ? parseFloat(req.query.lng as string) : 79.0747;
+
+    const centers = db.prepare('SELECT * FROM procurement_centers').all() as any[];
+
+    const processingMins = Math.round(15 + Math.max(0, (quantity - 1000) / 1000) * 5);
+
+    let lowestTotalTime = Infinity;
+    let recommendedCenterId: string | null = null;
+
+    const evaluatedCenters = centers.map((center) => {
+      // Ensure date schedule & slots exist
+      const schedule = ensureCenterScheduleForDate(center.id, date);
+
+      // Distance and travel time
+      const distance = calculateDistance(lat, lng, center.latitude, center.longitude);
+      const travelTime = estimateTravelTime(distance);
+      const waitingMins = center.waitingTimeMins || 15;
+      const totalJourneyTime = travelTime + waitingMins + processingMins;
+
+      // Crop acceptance
+      const centerCrops = db.prepare('SELECT * FROM crops WHERE center_id = ?').all(center.id) as any[];
+      const acceptsSelectedCrop = !cropId || centerCrops.some((c) => c.id === cropId || c.name.toLowerCase().includes(cropId.toLowerCase()));
+
+      const isOperable = schedule.is_working_day === 1 && schedule.status !== 'CLOSED' && schedule.status !== 'HOLIDAY';
+      const hasSlots = schedule.remaining_capacity > 0;
+
+      if (isOperable && hasSlots && acceptsSelectedCrop && totalJourneyTime < lowestTotalTime) {
+        lowestTotalTime = totalJourneyTime;
+        recommendedCenterId = center.id;
+      }
+
+      return {
+        id: center.id,
+        name: center.name,
+        code: center.code,
+        address: center.address,
+        district: center.district,
+        state: center.state,
+        latitude: center.latitude,
+        longitude: center.longitude,
+        workingHours: schedule.opening_time + ' - ' + schedule.closing_time,
+        rating: 4.8,
+        distanceKm: distance,
+        travelTimeMins: travelTime,
+        waitingTimeMins: waitingMins,
+        processingTimeMins: processingMins,
+        totalJourneyTimeMins: totalJourneyTime,
+        dailyCapacity: schedule.daily_capacity,
+        remainingSlots: schedule.remaining_capacity,
+        dateStatus: schedule.status,
+        isWorkingDay: Boolean(schedule.is_working_day),
+        crops: centerCrops,
+        acceptsSelectedCrop,
+        is_ai_recommended: false
+      };
+    });
+
+    const centersWithRecommendation = evaluatedCenters.map((c) => ({
+      ...c,
+      is_ai_recommended: c.id === recommendedCenterId,
+      recommendationReason: c.id === recommendedCenterId
+        ? `Lowest total journey time (${c.totalJourneyTimeMins} mins: ${c.travelTimeMins}m travel + ${c.waitingTimeMins}m wait + ${c.processingTimeMins}m processing) and open capacity.`
+        : undefined
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        date,
+        dayName: getDayName(date),
+        quantityKg: quantity,
+        processingMins,
+        centers: centersWithRecommendation
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 3. AI RECOMMENDED DATE & SLOT (Total Time Optimization Engine)
+export const getAiRecommendedDateAndSlot = (req: Request, res: Response): void => {
+  try {
+    const cropId = (req.body.cropId as string) || (req.query.cropId as string) || '';
+    const quantity = parseFloat(req.body.quantity as string || req.query.quantity as string) || 2000;
+    const lat = parseFloat(req.body.lat as string || req.query.lat as string) || 12.2253;
+    const lng = parseFloat(req.body.lng as string || req.query.lng as string) || 79.0747;
+
+    const centers = db.prepare('SELECT * FROM procurement_centers').all() as any[];
+    const today = new Date();
+    const processingMins = Math.round(15 + Math.max(0, (quantity - 1000) / 1000) * 5);
+
+    let bestOption: any = null;
+    let lowestTotalTime = Infinity;
+
+    // Evaluate candidate dates over next 7-14 days
+    for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+      const targetDate = new Date(today.getTime() + dayOffset * 86400000);
+      const dateStr = targetDate.toISOString().split('T')[0];
+
+      for (const center of centers) {
+        const schedule = ensureCenterScheduleForDate(center.id, dateStr);
+        if (!schedule || schedule.is_working_day === 0 || schedule.status === 'CLOSED' || schedule.status === 'HOLIDAY' || schedule.remaining_capacity <= 0) {
+          continue;
+        }
+
+        const distance = calculateDistance(lat, lng, center.latitude, center.longitude);
+        const travelTime = estimateTravelTime(distance);
+        const waitingTime = center.waitingTimeMins || 15;
+        const totalJourneyTime = travelTime + waitingTime + processingMins;
+
+        // Fetch candidate available slots
+        const availableSlots = db.prepare(`
+          SELECT * FROM slots 
+          WHERE center_id = ? AND date = ? AND status = 'Available' AND booked_count < capacity
+          ORDER BY start_time ASC
+        `).all(center.id, dateStr) as any[];
+
+        if (availableSlots.length === 0) continue;
+
+        // Prefer mid-morning slots (10:00 AM - 11:30 AM)
+        const idealSlot = availableSlots.find((s) => {
+          const mins = timeToMinutes(s.start_time);
+          return mins >= 600 && mins <= 690;
+        }) || availableSlots[0];
+
+        if (totalJourneyTime < lowestTotalTime) {
+          lowestTotalTime = totalJourneyTime;
+          bestOption = {
+            recommendedDate: dateStr,
+            recommendedDateFormatted: getFormattedDate(dateStr),
+            recommendedDay: getDayName(dateStr),
+            recommendedCenterId: center.id,
+            recommendedCenterName: center.name,
+            recommendedCenterAddress: center.address,
+            recommendedSlotId: idealSlot.id,
+            recommendedMasterWindow: idealSlot.master_window,
+            recommendedTime: `${idealSlot.start_time} - ${idealSlot.end_time}`,
+            travelTimeMins: travelTime,
+            estimatedWaitingMins: waitingTime,
+            processingMins,
+            totalJourneyTimeMins: totalJourneyTime,
+            reason: `Lowest estimated total journey time (${totalJourneyTime} mins) based on distance (${distance.toFixed(1)} km), smooth queue flow, and available bay capacity.`
+          };
+        }
+      }
+
+      // If we found a great match within the first 3 days, break early
+      if (bestOption && dayOffset >= 3) break;
+    }
+
+    if (!bestOption) {
+      // Fallback to center-a tomorrow
+      const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+      const fallbackCenter = centers[0] || { id: 'center-a', name: 'Kilpennathur DPC', address: 'Kilpennathur' };
+      bestOption = {
+        recommendedDate: tomorrowStr,
+        recommendedDateFormatted: getFormattedDate(tomorrowStr),
+        recommendedDay: getDayName(tomorrowStr),
+        recommendedCenterId: fallbackCenter.id,
+        recommendedCenterName: fallbackCenter.name,
+        recommendedCenterAddress: fallbackCenter.address,
+        recommendedSlotId: `slot-${fallbackCenter.id}-${tomorrowStr.replace(/-/g, '')}-615`,
+        recommendedMasterWindow: '10:00 AM - 11:00 AM',
+        recommendedTime: '10:15 AM - 10:30 AM',
+        travelTimeMins: 20,
+        estimatedWaitingMins: 15,
+        processingMins: 20,
+        totalJourneyTimeMins: 55,
+        reason: 'Recommended default slot based on standard travel time and bay capacity.'
+      };
+    }
+
+    res.json({
+      success: true,
+      data: bestOption
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 4. GET CENTER SLOTS (1-Hour Master Windows + 4x15-Min Sub-Slots)
 export const getCenterSlots = (req: Request, res: Response): void => {
   try {
     const centerId = req.params.centerId as string;
@@ -119,6 +499,7 @@ export const getCenterSlots = (req: Request, res: Response): void => {
       return;
     }
 
+    ensureCenterScheduleForDate(centerId, date);
     ensureCenterSlotsForDate(centerId, date);
 
     const distance = calculateDistance(lat, lng, center.latitude, center.longitude);
@@ -149,13 +530,9 @@ export const getCenterSlots = (req: Request, res: Response): void => {
       const departureTime = minutesToTime(departureMins);
 
       // Score factors
-      // 1. Capacity availability (0-40)
       const capScore = isAvailable ? Math.min(40, remainingCapacity * 20) : 0;
-      // 2. Comfortable departure timing (0-30) - prefer mid-morning slots 10:00 AM - 11:30 AM
       const timingScore = slotStartMins >= 600 && slotStartMins <= 720 ? 30 : 20;
-      // 3. Workload smoothing (0-30)
       const workloadScore = Math.max(0, 30 - slot.booked_count * 10);
-
       const totalScore = isAvailable ? capScore + timingScore + workloadScore : 0;
 
       if (isAvailable && totalScore > highestScore) {
@@ -228,6 +605,7 @@ export const getCenterSlots = (req: Request, res: Response): void => {
       data: {
         centerId,
         date,
+        dayName: getDayName(date),
         travelTimeMins: travelTime,
         distanceKm: distance,
         estimatedProcessingMins: processingMins,
@@ -241,10 +619,10 @@ export const getCenterSlots = (req: Request, res: Response): void => {
   }
 };
 
-// 2. TRANSACTIONAL SLOT BOOKING
+// 5. TRANSACTIONAL ADVANCE SLOT BOOKING WITH OVERBOOKING PROTECTION
 export const bookSlot = (req: Request, res: Response): void => {
   try {
-    const { farmerId, centerId, slotId, cropId, expectedQuantity, crops, lat, lng } = req.body;
+    const { farmerId, centerId, slotId, cropId, expectedQuantity, crops, lat, lng, date } = req.body;
 
     let computedQuantity = expectedQuantity;
     let targetCropId = cropId;
@@ -280,33 +658,28 @@ export const bookSlot = (req: Request, res: Response): void => {
       existingFarmer = db.prepare('SELECT * FROM farmers WHERE id = ?').get(farmerId) as any;
     }
 
-    // If farmer already has an uncompleted active booking, cancel and replace it seamlessly
-    const activeBooking = db
-      .prepare(`
-        SELECT b.*, t.token_number, t.status as token_status
-        FROM bookings b
-        LEFT JOIN tokens t ON b.id = t.booking_id
-        WHERE b.farmer_id = ? AND b.status NOT IN ('Procurement Completed', 'Bill Generated', 'Payment Completed', 'Cancelled')
-      `)
-      .get(farmerId) as any;
-
-    if (activeBooking) {
-      // Release old slot capacity and supersede old booking
-      db.prepare(`
-        UPDATE slots 
-        SET booked_count = MAX(0, booked_count - 1),
-            status = CASE WHEN status = 'Booked' THEN 'Available' ELSE status END
-        WHERE id = ?
-      `).run(activeBooking.slot_id);
-      db.prepare("UPDATE bookings SET status = 'Cancelled' WHERE id = ?").run(activeBooking.id);
-      db.prepare("UPDATE tokens SET status = 'Cancelled' WHERE booking_id = ?").run(activeBooking.id);
-      db.prepare("DELETE FROM queue WHERE booking_id = ?").run(activeBooking.id);
+    // CRITICAL: Recheck slot and capacity atomically (Concurrency Control & Overbooking Protection)
+    const targetSlot = db.prepare('SELECT * FROM slots WHERE id = ?').get(slotId) as any;
+    if (!targetSlot) {
+      res.status(404).json({ success: false, message: 'Selected time slot not found.' });
+      return;
     }
 
-    // Atomically book the 15-minute sub-slot
-    let targetSlot = db.prepare('SELECT * FROM slots WHERE id = ?').get(slotId) as any;
-    if (!targetSlot) {
-      res.status(404).json({ success: false, message: 'Selected time slot not found' });
+    const targetDate = targetSlot.date || date || new Date().toISOString().split('T')[0];
+
+    // Validate past dates
+    if (isPastDate(targetDate)) {
+      res.status(400).json({ success: false, message: 'Cannot book a slot for a past date. Please select a future date.' });
+      return;
+    }
+
+    // Check center schedule status for that date
+    const dateSchedule = ensureCenterScheduleForDate(centerId, targetDate);
+    if (dateSchedule.is_working_day === 0 || dateSchedule.status === 'CLOSED' || dateSchedule.status === 'HOLIDAY') {
+      res.status(400).json({
+        success: false,
+        message: `Procurement center is marked as ${dateSchedule.status || 'Closed'} on ${getFormattedDate(targetDate)} (${dateSchedule.day_name}). Please select another date.`
+      });
       return;
     }
 
@@ -323,68 +696,120 @@ export const bookSlot = (req: Request, res: Response): void => {
       return;
     }
 
-    if (targetSlot.booked_count >= targetSlot.capacity) {
-      // Auto-fallback: Find next available 15-minute sub-slot
-      const fallbackSlot = db
-        .prepare(`
-          SELECT * FROM slots 
-          WHERE center_id = ? AND date = ? AND status = 'Available' AND booked_count < capacity
-          ORDER BY start_time ASC
-          LIMIT 1
-        `)
-        .get(centerId, targetSlot.date) as any;
+    // Overbooking check: if already at full capacity
+    if (targetSlot.booked_count >= targetSlot.capacity || targetSlot.status === 'Booked') {
+      // Find next available slot on that day
+      const fallbackSlot = db.prepare(`
+        SELECT * FROM slots 
+        WHERE center_id = ? AND date = ? AND status = 'Available' AND booked_count < capacity
+        ORDER BY start_time ASC
+        LIMIT 1
+      `).get(centerId, targetDate) as any;
 
-      if (!fallbackSlot) {
-        res.status(400).json({ success: false, message: 'All slots for this center are currently fully booked today.' });
-        return;
-      }
-      targetSlot = fallbackSlot;
+      res.status(409).json({
+        success: false,
+        message: 'This slot was just booked by another farmer.',
+        slotFull: true,
+        suggestedSlot: fallbackSlot ? {
+          id: fallbackSlot.id,
+          time: `${fallbackSlot.start_time} - ${fallbackSlot.end_time}`,
+          masterWindow: fallbackSlot.master_window
+        } : null,
+        alternativeAvailable: Boolean(fallbackSlot)
+      });
+      return;
+    }
+
+    // Prevent duplicate active booking: cancel and supersede any active booking for the farmer
+    const activeBooking = db
+      .prepare(`
+        SELECT b.*, t.token_number, t.status as token_status
+        FROM bookings b
+        LEFT JOIN tokens t ON b.id = t.booking_id
+        WHERE b.farmer_id = ? AND b.status NOT IN ('Procurement Completed', 'Bill Generated', 'Payment Completed', 'Cancelled')
+      `)
+      .get(farmerId) as any;
+
+    if (activeBooking) {
+      db.prepare(`
+        UPDATE slots 
+        SET booked_count = MAX(0, booked_count - 1),
+            available_count = MIN(capacity, available_count + 1),
+            status = CASE WHEN status = 'Booked' THEN 'Available' ELSE status END
+        WHERE id = ?
+      `).run(activeBooking.slot_id);
+
+      db.prepare("UPDATE bookings SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(activeBooking.id);
+      db.prepare("UPDATE tokens SET status = 'Cancelled' WHERE booking_id = ?").run(activeBooking.id);
+      db.prepare("DELETE FROM queue WHERE booking_id = ?").run(activeBooking.id);
     }
 
     // Update slot capacity atomically
     const newBookedCount = targetSlot.booked_count + 1;
     const newStatus = newBookedCount >= targetSlot.capacity ? 'Booked' : 'Available';
+    const newAvailableCount = Math.max(0, targetSlot.capacity - newBookedCount);
 
     db.prepare(`
       UPDATE slots 
-      SET booked_count = ?, status = ?
+      SET booked_count = ?, status = ?, available_count = ?
       WHERE id = ?
-    `).run(newBookedCount, newStatus, targetSlot.id);
+    `).run(newBookedCount, newStatus, newAvailableCount, targetSlot.id);
+
+    // Update centre date schedule
+    db.prepare(`
+      UPDATE centre_date_schedules
+      SET booked_capacity = booked_capacity + 1,
+          remaining_capacity = MAX(0, remaining_capacity - 1),
+          status = CASE WHEN remaining_capacity - 1 <= 0 THEN 'FULL' WHEN remaining_capacity - 1 <= daily_capacity * 0.25 THEN 'LIMITED_AVAILABILITY' ELSE status END,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE centre_id = ? AND date = ?
+    `).run(centerId, targetDate);
 
     // Calculate queue position & token
     const queueCount = db
-      .prepare('SELECT count(*) as cnt FROM bookings WHERE center_id = ? AND status NOT IN (\'Procurement Completed\', \'Cancelled\')')
-      .get(centerId) as { cnt: number };
+      .prepare('SELECT count(*) as cnt FROM bookings WHERE center_id = ? AND date = ? AND status NOT IN (\'Procurement Completed\', \'Cancelled\')')
+      .get(centerId, targetDate) as { cnt: number };
 
     const queuePos = (queueCount?.cnt || 0) + 1;
-    const tokenRandom = Math.floor(1000 + Math.random() * 9000);
-    const tokenNumber = `FG-${tokenRandom}`;
-    const bookingId = `book-${Date.now()}`;
+    const dateCompact = targetDate.replace(/-/g, '');
+    const bookingRand = Math.floor(100000 + Math.random() * 900000);
+    const bookingId = `KG-${dateCompact}-${bookingRand}`;
+
+    const centerCode = center.code ? center.code.replace(/[^A-Z0-9]/gi, '').slice(0, 3).toUpperCase() : 'CEN';
+    const tokenNumber = `KG-${centerCode}-${String(queuePos).padStart(3, '0')}`;
 
     // Estimated travel and processing
     const distance = calculateDistance(farmerLat, farmerLng, center.latitude, center.longitude);
     const travelTime = estimateTravelTime(distance);
     const processingMins = Math.round(15 + Math.max(0, (computedQuantity - 1000) / 1000) * 5);
     const waitingMins = center.waitingTimeMins || 15;
+    const totalJourneyTime = travelTime + waitingMins + processingMins;
 
     const slotStartMins = timeToMinutes(targetSlot.start_time);
     const departureMins = slotStartMins - travelTime - 15;
     const departureTime = minutesToTime(departureMins);
+    const dayName = getDayName(targetDate);
 
     // Insert booking
     db.prepare(`
       INSERT INTO bookings (
-        id, farmer_id, center_id, slot_id, crop_id, expected_quantity,
+        id, farmer_id, center_id, slot_id, crop_id, date, day_name,
+        master_slot_id, sub_slot_id, token_number, expected_quantity,
         priority_score, estimated_processing_mins, estimated_waiting_mins,
         travel_time_mins, planned_start_time, planned_end_time, estimated_start_time,
-        delay_minutes, status, crops_breakdown, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'Slot Booked', ?, CURRENT_TIMESTAMP)
+        delay_minutes, status, crops_breakdown, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'Slot Booked', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(
       bookingId,
       farmerId,
       centerId,
       targetSlot.id,
       targetCropId,
+      targetDate,
+      dayName,
+      targetSlot.master_window,
+      `${targetSlot.start_time} - ${targetSlot.end_time}`,
+      tokenNumber,
       computedQuantity,
       85.0,
       processingMins,
@@ -408,7 +833,9 @@ export const bookSlot = (req: Request, res: Response): void => {
       VALUES (?, ?, ?, ?, 'Waiting', ?)
     `).run(`q-${Date.now()}`, centerId, bookingId, queuePos, waitingMins);
 
-    // Notification
+    // In-app & Simulated SMS Notification
+    const notifMessage = `Your procurement slot at ${center.name} is confirmed for ${getFormattedDate(targetDate)} (${dayName}) at ${targetSlot.start_time} - ${targetSlot.end_time}. Token: ${tokenNumber}`;
+
     db.prepare(`
       INSERT INTO notifications (id, user_id, user_type, title, message, type)
       VALUES (?, ?, 'farmer', ?, ?, 'slot_confirmation')
@@ -416,23 +843,151 @@ export const bookSlot = (req: Request, res: Response): void => {
       `notif-${Date.now()}`,
       farmerId,
       `Slot Confirmed: ${tokenNumber}`,
-      `Your 15-minute booking slot at ${center.name} is confirmed for ${targetSlot.start_time} - ${targetSlot.end_time} (${targetSlot.master_window || '1-Hour Window'}). Token: ${tokenNumber}`
+      notifMessage
     );
 
     res.json({
       success: true,
-      message: '15-Minute Slot successfully booked!',
+      message: 'Procurement slot successfully booked!',
       data: {
         bookingId,
         tokenNumber,
         queuePosition: queuePos,
+        date: targetDate,
+        dayName,
+        dateFormatted: getFormattedDate(targetDate),
         masterWindow: targetSlot.master_window,
         slotTime: `${targetSlot.start_time} - ${targetSlot.end_time}`,
         centerName: center.name,
         centerAddress: center.address,
         recommendedDepartureTime: departureTime,
+        travelTimeMins: travelTime,
         estimatedWaitingMins: waitingMins,
-        status: 'Confirmed'
+        processingMins,
+        totalJourneyTimeMins: totalJourneyTime,
+        status: 'Slot Booked'
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 6. RESCHEDULE BOOKING
+export const rescheduleBooking = (req: Request, res: Response): void => {
+  try {
+    const { bookingId } = req.params;
+    const { newCenterId, newSlotId, newDate, lat, lng } = req.body;
+
+    const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(bookingId) as any;
+    if (!booking) {
+      res.status(404).json({ success: false, message: 'Existing booking not found.' });
+      return;
+    }
+
+    if (booking.status.includes('Completed') || booking.status === 'Cancelled') {
+      res.status(400).json({ success: false, message: `Cannot reschedule a booking with status '${booking.status}'.` });
+      return;
+    }
+
+    const targetCenterId = newCenterId || booking.center_id;
+    const center = db.prepare('SELECT * FROM procurement_centers WHERE id = ?').get(targetCenterId) as any;
+    if (!center) {
+      res.status(404).json({ success: false, message: 'Target procurement center not found.' });
+      return;
+    }
+
+    const newSlot = db.prepare('SELECT * FROM slots WHERE id = ?').get(newSlotId) as any;
+    if (!newSlot) {
+      res.status(404).json({ success: false, message: 'New slot not found.' });
+      return;
+    }
+
+    const targetDate = newSlot.date || newDate || booking.date;
+    if (isPastDate(targetDate)) {
+      res.status(400).json({ success: false, message: 'Cannot reschedule to a past date.' });
+      return;
+    }
+
+    // Check slot availability
+    if (newSlot.booked_count >= newSlot.capacity || newSlot.status === 'Booked' || newSlot.status === 'Reserved') {
+      res.status(409).json({ success: false, message: 'The selected new slot is no longer available. Please choose another.' });
+      return;
+    }
+
+    // 1. Release previous slot
+    db.prepare(`
+      UPDATE slots 
+      SET booked_count = MAX(0, booked_count - 1),
+          available_count = MIN(capacity, available_count + 1),
+          status = CASE WHEN status = 'Booked' THEN 'Available' ELSE status END
+      WHERE id = ?
+    `).run(booking.slot_id);
+
+    // 2. Reserve new slot
+    const newBookedCount = newSlot.booked_count + 1;
+    const newStatus = newBookedCount >= newSlot.capacity ? 'Booked' : 'Available';
+    const newAvailCount = Math.max(0, newSlot.capacity - newBookedCount);
+
+    db.prepare(`
+      UPDATE slots 
+      SET booked_count = ?, status = ?, available_count = ?
+      WHERE id = ?
+    `).run(newBookedCount, newStatus, newAvailCount, newSlot.id);
+
+    // 3. Recalculate travel & waiting times
+    const farmerLat = lat || 12.2253;
+    const farmerLng = lng || 79.0747;
+    const distance = calculateDistance(farmerLat, farmerLng, center.latitude, center.longitude);
+    const travelTime = estimateTravelTime(distance);
+    const slotStartMins = timeToMinutes(newSlot.start_time);
+    const departureMins = slotStartMins - travelTime - 15;
+    const departureTime = minutesToTime(departureMins);
+    const dayName = getDayName(targetDate);
+
+    // 4. Update booking
+    db.prepare(`
+      UPDATE bookings 
+      SET center_id = ?, slot_id = ?, date = ?, day_name = ?,
+          master_slot_id = ?, sub_slot_id = ?,
+          planned_start_time = ?, planned_end_time = ?, estimated_start_time = ?,
+          travel_time_mins = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(
+      targetCenterId,
+      newSlot.id,
+      targetDate,
+      dayName,
+      newSlot.master_window,
+      `${newSlot.start_time} - ${newSlot.end_time}`,
+      newSlot.start_time,
+      newSlot.end_time,
+      newSlot.start_time,
+      travelTime,
+      bookingId
+    );
+
+    // 5. Update token departure time
+    db.prepare('UPDATE tokens SET recommended_departure_time = ? WHERE booking_id = ?').run(departureTime, bookingId);
+
+    // 6. Rescheduling notification
+    const reschedMessage = `Your appointment has been successfully rescheduled to ${getFormattedDate(targetDate)} (${dayName}) at ${newSlot.start_time} - ${newSlot.end_time} at ${center.name}.`;
+    db.prepare(`
+      INSERT INTO notifications (id, user_id, user_type, title, message, type)
+      VALUES (?, ?, 'farmer', ?, ?, 'slot_rescheduled')
+    `).run(`notif-${Date.now()}`, booking.farmer_id, 'Slot Rescheduled', reschedMessage);
+
+    res.json({
+      success: true,
+      message: 'Procurement slot successfully rescheduled!',
+      data: {
+        bookingId,
+        centerName: center.name,
+        date: targetDate,
+        dayName,
+        slotTime: `${newSlot.start_time} - ${newSlot.end_time}`,
+        masterWindow: newSlot.master_window,
+        departureTime
       }
     });
   } catch (error: any) {
@@ -794,6 +1349,128 @@ export const cancelBooking = (req: Request, res: Response): void => {
     db.prepare('DELETE FROM queue WHERE booking_id = ?').run(bookingId);
 
     res.json({ success: true, message: 'Booking successfully cancelled' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 10. OFFICER: BULK GENERATE SCHEDULE (e.g. Next 14 Days)
+export const bulkGenerateSchedule = (req: Request, res: Response): void => {
+  try {
+    const {
+      centerId,
+      days = 14,
+      openingTime = '09:00 AM',
+      closingTime = '05:00 PM',
+      farmersPerSubSlot = 2,
+      workingDays = [1, 2, 3, 4, 5, 6] // 0=Sun, 1=Mon, ..., 6=Sat
+    } = req.body;
+
+    if (!centerId) {
+      res.status(400).json({ success: false, message: 'centerId is required' });
+      return;
+    }
+
+    const today = new Date();
+    const createdSchedules: any[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const targetDate = new Date(today.getTime() + i * 86400000);
+      const dateStr = targetDate.toISOString().split('T')[0];
+      const dayOfWeek = targetDate.getDay();
+      const isWorking = workingDays.includes(dayOfWeek) ? 1 : 0;
+      const status = isWorking ? 'AVAILABLE' : 'CLOSED';
+      const dayName = getDayName(dateStr);
+      const scheduleId = `sched-${centerId}-${dateStr}`;
+      const dailyCapacity = farmersPerSubSlot * 32; // ~32 sub-slots in 8-hour day
+
+      db.prepare(`
+        INSERT INTO centre_date_schedules (
+          schedule_id, centre_id, date, day_name, is_working_day,
+          opening_time, closing_time, daily_capacity, booked_capacity, reserved_capacity, remaining_capacity,
+          status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(centre_id, date) DO UPDATE SET
+          opening_time = excluded.opening_time,
+          closing_time = excluded.closing_time,
+          daily_capacity = excluded.daily_capacity,
+          is_working_day = excluded.is_working_day,
+          status = CASE WHEN centre_date_schedules.status IN ('HOLIDAY', 'RESERVED') THEN centre_date_schedules.status ELSE excluded.status END,
+          updated_at = CURRENT_TIMESTAMP
+      `).run(scheduleId, centerId, dateStr, dayName, isWorking, openingTime, closingTime, dailyCapacity, dailyCapacity, status);
+
+      // Ensure slots exist
+      ensureCenterSlotsForDate(centerId, dateStr, scheduleId);
+
+      // Adjust slot capacity
+      db.prepare(`
+        UPDATE slots 
+        SET capacity = ?, available_count = CASE WHEN status = 'Available' THEN MAX(0, ? - booked_count) ELSE available_count END
+        WHERE center_id = ? AND date = ? AND booked_count = 0
+      `).run(farmersPerSubSlot, farmersPerSubSlot, centerId, dateStr);
+
+      createdSchedules.push({ date: dateStr, dayName, isWorking, status });
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully generated ${days}-day multi-day schedule for center.`,
+      data: {
+        centerId,
+        daysGenerated: days,
+        schedules: createdSchedules
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 11. OFFICER: UPDATE DATE SCHEDULE STATUS (Toggle Holiday, Closure, Working Day)
+export const updateDateScheduleStatus = (req: Request, res: Response): void => {
+  try {
+    const { centerId, date, status, isWorkingDay, notes } = req.body;
+
+    if (!centerId || !date || !status) {
+      res.status(400).json({ success: false, message: 'centerId, date and status are required' });
+      return;
+    }
+
+    const workingFlag = typeof isWorkingDay === 'boolean' ? (isWorkingDay ? 1 : 0) : (status === 'CLOSED' || status === 'HOLIDAY' ? 0 : 1);
+
+    db.prepare(`
+      INSERT INTO centre_date_schedules (
+        schedule_id, centre_id, date, day_name, is_working_day,
+        status, notes, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(centre_id, date) DO UPDATE SET
+        is_working_day = excluded.is_working_day,
+        status = excluded.status,
+        notes = excluded.notes,
+        updated_at = CURRENT_TIMESTAMP
+    `).run(`sched-${centerId}-${date}`, centerId, date, getDayName(date), workingFlag, status, notes || null);
+
+    // If day is marked as CLOSED or HOLIDAY, mark non-booked slots as Closed
+    if (workingFlag === 0) {
+      db.prepare(`
+        UPDATE slots 
+        SET status = 'Closed' 
+        WHERE center_id = ? AND date = ? AND booked_count = 0
+      `).run(centerId, date);
+    } else {
+      // Reopen closed slots that had 0 bookings
+      db.prepare(`
+        UPDATE slots 
+        SET status = 'Available' 
+        WHERE center_id = ? AND date = ? AND booked_count = 0 AND status = 'Closed'
+      `).run(centerId, date);
+    }
+
+    res.json({
+      success: true,
+      message: `Date ${date} status updated to ${status}.`,
+      data: { centerId, date, status, isWorkingDay: workingFlag === 1 }
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

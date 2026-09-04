@@ -150,7 +150,38 @@ export const api = {
     return handleResponse(res);
   },
 
-  // Slots & Booking
+  // Multi-Day Slots & Advance Booking
+  async getCenterCalendar(centerId: string, days: number = 14) {
+    const res = await fetch(`${BASE_URL}/centers/${centerId}/calendar?days=${days}`);
+    return handleResponse(res);
+  },
+
+  async getProcurementOptions(cropId?: string, date?: string, quantity?: number, lat?: number, lng?: number) {
+    const query = new URLSearchParams();
+    if (cropId) query.append('cropId', cropId);
+    if (date) query.append('date', date);
+    if (quantity) query.append('quantity', quantity.toString());
+    if (lat) query.append('lat', lat.toString());
+    if (lng) query.append('lng', lng.toString());
+
+    const res = await fetch(`${BASE_URL}/centers/procurement-options?${query.toString()}`);
+    return handleResponse(res);
+  },
+
+  async getAiRecommendedDateAndSlot(payload: {
+    cropId?: string;
+    quantity?: number;
+    lat?: number;
+    lng?: number;
+  }) {
+    const res = await fetch(`${BASE_URL}/ai/recommend-slot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
   async getCenterSlots(centerId: string, date?: string, quantity?: number, lat?: number, lng?: number) {
     const query = new URLSearchParams();
     if (date) query.append('date', date);
@@ -171,8 +202,27 @@ export const api = {
     crops?: any[];
     lat?: number;
     lng?: number;
+    date?: string;
   }) {
     const res = await fetch(`${BASE_URL}/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async rescheduleBooking(
+    bookingId: string,
+    payload: {
+      newCenterId?: string;
+      newSlotId: string;
+      newDate?: string;
+      lat?: number;
+      lng?: number;
+    }
+  ) {
+    const res = await fetch(`${BASE_URL}/bookings/${bookingId}/reschedule`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -308,6 +358,37 @@ export const api = {
     farmersPerSubSlot: number;
   }) {
     const res = await fetch(`${BASE_URL}/officer/schedule/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async bulkGenerateSchedule(payload: {
+    centerId: string;
+    days?: number;
+    openingTime?: string;
+    closingTime?: string;
+    farmersPerSubSlot?: number;
+    workingDays?: number[];
+  }) {
+    const res = await fetch(`${BASE_URL}/officer/schedule/bulk-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async updateDateScheduleStatus(payload: {
+    centerId: string;
+    date: string;
+    status: string;
+    isWorkingDay?: boolean;
+    notes?: string;
+  }) {
+    const res = await fetch(`${BASE_URL}/officer/schedule/date-status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

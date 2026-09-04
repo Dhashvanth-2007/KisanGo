@@ -90,13 +90,20 @@ CREATE TABLE IF NOT EXISTS center_ratings (
 CREATE TABLE IF NOT EXISTS slots (
   id TEXT PRIMARY KEY,
   center_id TEXT NOT NULL,
+  schedule_id TEXT,
   date TEXT NOT NULL,
   master_window TEXT, -- e.g. '09:00 AM - 10:00 AM'
+  master_start_time TEXT,
+  master_end_time TEXT,
   start_time TEXT NOT NULL, -- e.g. '09:00 AM'
   end_time TEXT NOT NULL, -- e.g. '09:15 AM'
+  sub_start_time TEXT,
+  sub_end_time TEXT,
   duration_mins INTEGER DEFAULT 15,
   capacity INTEGER NOT NULL DEFAULT 2,
   booked_count INTEGER NOT NULL DEFAULT 0,
+  reserved_count INTEGER NOT NULL DEFAULT 0,
+  available_count INTEGER NOT NULL DEFAULT 2,
   status TEXT NOT NULL DEFAULT 'Available', -- 'Available', 'Booked', 'Reserved', 'Closed', 'Completed'
   reserved_reason TEXT, -- 'Centre Maintenance', 'Official Requirement', 'Emergency', 'Break', 'Staff Requirement', 'Capacity Control', 'Other'
   reserved_by TEXT,
@@ -104,7 +111,7 @@ CREATE TABLE IF NOT EXISTS slots (
   FOREIGN KEY (center_id) REFERENCES procurement_centers(id) ON DELETE CASCADE
 );
 
--- Center Schedules & Configuration Table
+-- Center Schedules & Base Configuration Table
 CREATE TABLE IF NOT EXISTS center_schedules (
   center_id TEXT PRIMARY KEY,
   opening_time TEXT NOT NULL DEFAULT '09:00 AM',
@@ -118,20 +125,48 @@ CREATE TABLE IF NOT EXISTS center_schedules (
   FOREIGN KEY (center_id) REFERENCES procurement_centers(id) ON DELETE CASCADE
 );
 
--- Bookings Table (with Dynamic Queue & Real-time Delay tracking)
+-- Multi-Day Center Date Schedules Table (14-Day Advance Booking System)
+CREATE TABLE IF NOT EXISTS centre_date_schedules (
+  schedule_id TEXT PRIMARY KEY,
+  centre_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  day_name TEXT NOT NULL,
+  is_working_day INTEGER NOT NULL DEFAULT 1,
+  opening_time TEXT NOT NULL DEFAULT '09:00 AM',
+  closing_time TEXT NOT NULL DEFAULT '05:00 PM',
+  daily_capacity INTEGER NOT NULL DEFAULT 60,
+  booked_capacity INTEGER NOT NULL DEFAULT 0,
+  reserved_capacity INTEGER NOT NULL DEFAULT 0,
+  remaining_capacity INTEGER NOT NULL DEFAULT 60,
+  status TEXT NOT NULL DEFAULT 'AVAILABLE', -- 'AVAILABLE', 'LIMITED_AVAILABILITY', 'FULL', 'CLOSED', 'HOLIDAY', 'RESERVED'
+  notes TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(centre_id, date),
+  FOREIGN KEY (centre_id) REFERENCES procurement_centers(id) ON DELETE CASCADE
+);
+
+-- Bookings Table (with Dynamic Queue, Multi-Day Scheduling & Real-time Delay tracking)
 CREATE TABLE IF NOT EXISTS bookings (
   id TEXT PRIMARY KEY,
   farmer_id TEXT NOT NULL,
   center_id TEXT NOT NULL,
   slot_id TEXT NOT NULL,
   crop_id TEXT NOT NULL,
+  date TEXT,
+  day_name TEXT,
+  master_slot_id TEXT,
+  sub_slot_id TEXT,
+  token_number TEXT,
   expected_quantity REAL NOT NULL, -- in kg
   priority_score REAL DEFAULT 0,
   estimated_processing_mins INTEGER DEFAULT 15,
   estimated_waiting_mins INTEGER DEFAULT 15,
+  actual_waiting_minutes INTEGER,
   travel_time_mins INTEGER DEFAULT 20,
   planned_start_time TEXT, -- e.g. '10:00 AM'
   planned_end_time TEXT, -- e.g. '10:15 AM'
+  actual_arrival_time TEXT, -- recorded upon check-in
   actual_start_time TEXT, -- recorded when processing begins
   actual_end_time TEXT, -- recorded when completed
   estimated_start_time TEXT, -- dynamically recalculated with delay propagation
@@ -140,6 +175,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   status TEXT NOT NULL DEFAULT 'Slot Booked', -- 'Slot Booked', 'Traveling', 'Arrived', 'Waiting', 'Called', 'Processing', 'Delayed', 'Weight Recorded', 'Quality Checked', 'Procurement Completed', 'Bill Generated', 'Payment Processing', 'Payment Completed', 'Cancelled', 'Skipped'
   crops_breakdown TEXT, -- JSON array of selected crops and quantities
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (farmer_id) REFERENCES farmers(id),
   FOREIGN KEY (center_id) REFERENCES procurement_centers(id),
   FOREIGN KEY (slot_id) REFERENCES slots(id),

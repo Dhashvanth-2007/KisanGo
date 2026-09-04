@@ -15,14 +15,20 @@ import {
 } from '../controllers/centerController.js';
 import {
   getCenterSlots,
+  getCenterCalendar,
+  getProcurementOptions,
+  getAiRecommendedDateAndSlot,
   bookSlot,
+  rescheduleBooking,
   getFarmerActiveBooking,
   cancelBooking,
   reserveSlots,
   releaseReservedSlots,
   toggleSlotStatus,
   getOfficerSlotSummary,
-  updateCenterScheduleConfig
+  updateCenterScheduleConfig,
+  bulkGenerateSchedule,
+  updateDateScheduleStatus
 } from '../controllers/slotController.js';
 import {
   getLiveQueue,
@@ -72,18 +78,24 @@ router.post('/centers/:id/reviews', addCenterReview);
 router.post('/ai/recommend-center', getCenterRecommendations);
 router.post('/ai/voice-query', processVoiceQuery);
 
-// Slot & Booking routes
+// Slot & Multi-Day Booking routes
+router.get('/centers/procurement-options', getProcurementOptions);
+router.get('/centers/:centerId/calendar', getCenterCalendar);
 router.get('/centers/:centerId/slots', getCenterSlots);
+router.post('/ai/recommend-slot', getAiRecommendedDateAndSlot);
 router.post('/bookings', bookSlot);
+router.post('/bookings/:bookingId/reschedule', rescheduleBooking);
 router.get('/bookings/active/:farmerId', getFarmerActiveBooking);
 router.post('/bookings/:id/cancel', cancelBooking);
 
-// Officer Slot Management routes
+// Officer Slot & Multi-Day Schedule Management routes
 router.get('/officer/slots/summary', getOfficerSlotSummary);
 router.post('/officer/slots/reserve', reserveSlots);
 router.post('/officer/slots/release', releaseReservedSlots);
 router.post('/officer/slots/toggle', toggleSlotStatus);
 router.post('/officer/schedule/config', updateCenterScheduleConfig);
+router.post('/officer/schedule/bulk-generate', bulkGenerateSchedule);
+router.post('/officer/schedule/date-status', updateDateScheduleStatus);
 
 // Dynamic Queue & Delay routes
 router.get('/centers/:centerId/queue', getLiveQueue);

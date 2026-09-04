@@ -4,10 +4,7 @@ import { CenterDiscoveryMap } from '../components/map/CenterDiscoveryMap';
 import { CenterCard } from '../components/center/CenterCard';
 import { CenterComparisonModal } from '../components/center/CenterComparisonModal';
 import { CenterProfileView } from '../components/center/CenterProfileView';
-import { CropQuantityForm } from '../components/booking/CropQuantityForm';
-import { SlotSelectionGrid } from '../components/booking/SlotSelectionGrid';
-import { SlotConfirmationModal } from '../components/booking/SlotConfirmationModal';
-import { Modal } from '../components/common/Modal';
+import { ProcurementBookingWizard } from '../components/booking/ProcurementBookingWizard';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -22,7 +19,8 @@ import {
   RefreshCw,
   Clock,
   ShieldCheck,
-  Wheat
+  Wheat,
+  Calendar
 } from 'lucide-react';
 
 interface FindCenterPageProps {
@@ -50,17 +48,9 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
   const [comparedCenterIds, setComparedCenterIds] = useState<string[]>([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
-  // Booking Wizard State
+  // Multi-Day Advance Booking Wizard State
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [bookingCenter, setBookingCenter] = useState<ProcurementCenter | null>(null);
-  const [bookingStep, setBookingStep] = useState<'crop_qty' | 'slots'>('crop_qty');
-  const [selectedCrops, setSelectedCrops] = useState<SelectedCropItem[]>([]);
-  const [centerSlots, setCenterSlots] = useState<Slot[]>([]);
-  const [centerMasterWindows, setCenterMasterWindows] = useState<MasterSlotWindow[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
-
-  const totalConsignmentQuantity = selectedCrops.reduce((s, c) => s + (c.expectedQuantity || 0), 0);
 
   // AI Center recommendation highlight
   const aiRecommendedCenter = centers.find((c) => c.ai_recommended) || centers[0];
@@ -75,69 +65,9 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
     return 0;
   });
 
-  const handleStartBooking = async (center: ProcurementCenter) => {
+  const handleStartBooking = (center: ProcurementCenter) => {
     setBookingCenter(center);
-    setBookingStep('crop_qty');
-
-    const defaultCrops = center.crops && center.crops.length > 0 ? center.crops : [
-      { id: `crop-${center.id}-1`, name: 'Paddy (Common / நெல்)', center_id: center.id, msp_rate: 23.0, unit: 'kg', processing_rate_mins_per_ton: 12, active: 1 }
-    ];
-
-    const firstCrop = defaultCrops[0];
-    setSelectedCrops([
-      {
-        cropId: firstCrop.id,
-        cropName: firstCrop.name,
-        expectedQuantity: 2000,
-        mspRate: firstCrop.msp_rate
-      }
-    ]);
-
-    // Fetch live slots with processing calculation
-    try {
-      const res = await api.getCenterSlots(center.id, undefined, 2000);
-      if (res.success && res.data) {
-        setCenterSlots(res.data.slots || []);
-        setCenterMasterWindows(res.data.masterWindows || []);
-        const aiSlot = res.data.slots?.find((s: Slot) => s.is_ai_recommended);
-        const firstAvailable = res.data.slots?.find((s: Slot) => s.status === 'Available' && (s.remaining_capacity ?? 1) > 0);
-        setSelectedSlot(aiSlot || firstAvailable || res.data.slots?.[0] || null);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleConfirmBooking = async () => {
-    if (!bookingCenter || !selectedSlot || selectedCrops.length === 0) return;
-
-    setIsBookingSubmitting(true);
-    try {
-      const totalQty = selectedCrops.reduce((sum, c) => sum + (c.expectedQuantity || 0), 0);
-      const res = await api.bookSlot({
-        farmerId: user?.id || 'farmer-1',
-        centerId: bookingCenter.id,
-        slotId: selectedSlot.id,
-        cropId: selectedCrops[0]?.cropId || 'crop-1',
-        expectedQuantity: totalQty,
-        crops: selectedCrops,
-        lat: user && 'latitude' in user ? user.latitude : 12.2253,
-        lng: user && 'longitude' in user ? user.longitude : 79.0747
-      });
-
-      if (res.success) {
-        showToast(`Slot Confirmed for ${selectedCrops.length} ${selectedCrops.length === 1 ? 'Grain' : 'Grains'}! Digital Token: ${res.data.tokenNumber}`, 'success');
-        setIsConfirmationOpen(false);
-        setBookingCenter(null);
-        onBookingSuccess();
-      } else {
-        showToast(res.message || 'Failed to book slot', 'error');
-      }
-    } catch (err: any) {
-      showToast(err.message || 'Booking transaction failed', 'error');
-    } finally {
-      setIsBookingSubmitting(false);
-    }
+    setIsWizardOpen(true);
   };
 
   const handleCompareToggle = (center: ProcurementCenter) => {
@@ -163,7 +93,19 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
         </div>
 
         {/* View Toggle & Compare Trigger */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Multi-Day Advance Booking Action */}
+          <button
+            onClick={() => {
+              setBookingCenter(null);
+              setIsWizardOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Calendar className="w-4 h-4 text-emerald-200" />
+            <span>📅 {t('book_slot') || 'Book Advance Slot'}</span>
+          </button>
+
           {/* Comparison Modal Trigger */}
           <button
             onClick={() => setIsComparisonOpen(true)}
@@ -283,96 +225,20 @@ export const FindCenterPage: React.FC<FindCenterPageProps> = ({
         onBookSlot={(c) => handleStartBooking(c)}
       />
 
-      {/* SLOT BOOKING WIZARD MODAL */}
-      {bookingCenter && (
-        <Modal
-          isOpen={!!bookingCenter}
-          onClose={() => setBookingCenter(null)}
-          title={`Book Slot at ${bookingCenter.name}`}
-          subtitle={`Distance: ${bookingCenter.distance} (${bookingCenter.travel_time}) • Queue: ${bookingCenter.queue} vehicles`}
-          maxWidth="2xl"
-        >
-          <div className="space-y-5">
-            {/* Step 1: Crop & Expected Quantity */}
-            {bookingStep === 'crop_qty' && (
-              <div className="space-y-4">
-                <CropQuantityForm
-                  crops={
-                    bookingCenter.crops && bookingCenter.crops.length > 0
-                      ? bookingCenter.crops
-                      : [
-                          { id: `crop-${bookingCenter.id}-1`, name: 'Paddy (Common / நெல்)', center_id: bookingCenter.id, msp_rate: 23.0, unit: 'kg', processing_rate_mins_per_ton: 12, active: 1 },
-                          { id: `crop-${bookingCenter.id}-2`, name: 'Paddy (Grade A / முதல் தரம்)', center_id: bookingCenter.id, msp_rate: 23.2, unit: 'kg', processing_rate_mins_per_ton: 10, active: 1 },
-                          { id: `crop-${bookingCenter.id}-3`, name: 'Maize (மக்காச்சோளம்)', center_id: bookingCenter.id, msp_rate: 20.9, unit: 'kg', processing_rate_mins_per_ton: 14, active: 1 },
-                          { id: `crop-${bookingCenter.id}-4`, name: 'Groundnut (நிலக்கடலை)', center_id: bookingCenter.id, msp_rate: 63.77, unit: 'kg', processing_rate_mins_per_ton: 15, active: 1 },
-                          { id: `crop-${bookingCenter.id}-5`, name: 'Ragi (கேழ்வரகு)', center_id: bookingCenter.id, msp_rate: 42.9, unit: 'kg', processing_rate_mins_per_ton: 12, active: 1 },
-                          { id: `crop-${bookingCenter.id}-6`, name: 'Black Gram / Urad (உளுந்து)', center_id: bookingCenter.id, msp_rate: 74.0, unit: 'kg', processing_rate_mins_per_ton: 16, active: 1 }
-                        ]
-                  }
-                  selectedCrops={selectedCrops}
-                  onChangeSelectedCrops={(crops) => setSelectedCrops(crops)}
-                  estimatedProcessingMins={Math.round(15 + Math.max(0, (totalConsignmentQuantity - 1000) / 1000) * 5)}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setBookingStep('slots')}
-                  disabled={selectedCrops.length === 0}
-                  className="w-full py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md transition-colors disabled:opacity-50"
-                >
-                  <span>{t('proceed_to_slots')} ({selectedCrops.length} {t('grains_selected')})</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            {/* Step 2: Slot Selection */}
-            {bookingStep === 'slots' && (
-              <div className="space-y-4">
-                <SlotSelectionGrid
-                  slots={centerSlots}
-                  masterWindows={centerMasterWindows}
-                  selectedSlotId={selectedSlot?.id || null}
-                  onSelectSlot={(slot) => setSelectedSlot(slot)}
-                  travelTimeMins={bookingCenter.travelTimeMins}
-                  centerName={bookingCenter.name}
-                  queueCount={bookingCenter.queue}
-                  waitingTime={bookingCenter.waiting_time}
-                />
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBookingStep('crop_qty')}
-                    className="w-1/3 py-3 border border-gray-200 rounded-2xl text-xs font-bold text-gray-600 hover:bg-gray-50"
-                  >
-                    {t('back_to_crops')}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!selectedSlot}
-                    onClick={() => setIsConfirmationOpen(true)}
-                    className="flex-1 py-3.5 bg-km-primary hover:bg-km-primaryDark text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
-                  >
-                    <span>{t('review_confirm_booking')}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {/* CONFIRMATION MODAL */}
-      <SlotConfirmationModal
-        isOpen={isConfirmationOpen}
-        onClose={() => setIsConfirmationOpen(false)}
-        center={bookingCenter}
-        slot={selectedSlot}
-        selectedCrops={selectedCrops}
-        onConfirm={handleConfirmBooking}
-        isConfirming={isBookingSubmitting}
+      {/* ADVANCE 14-DAY PROCUREMENT BOOKING WIZARD */}
+      <ProcurementBookingWizard
+        isOpen={isWizardOpen}
+        onClose={() => {
+          setIsWizardOpen(false);
+          setBookingCenter(null);
+        }}
+        centers={centers}
+        initialCenter={bookingCenter}
+        onBookingSuccess={() => {
+          setIsWizardOpen(false);
+          setBookingCenter(null);
+          onBookingSuccess();
+        }}
       />
     </div>
   );
