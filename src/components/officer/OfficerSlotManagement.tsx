@@ -72,11 +72,16 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
   const fetchCalendar = async () => {
     try {
       const res = await api.getCenterCalendar(centerId);
-      if (res.success && res.data) {
-        setCalendarDates(res.data);
+      if (res && res.success && res.data) {
+        const dates = Array.isArray(res.data.calendar)
+          ? res.data.calendar
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setCalendarDates(dates);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load center calendar:', e);
     }
   };
 
@@ -415,7 +420,7 @@ export const OfficerSlotManagement: React.FC<OfficerSlotManagementProps> = ({
               <h3 className="text-sm font-black text-km-textPrimary">
                 Selected Date: {selectedDate}
               </h3>
-              {calendarDates.find((d) => d.date === selectedDate) && (
+              {Array.isArray(calendarDates) && calendarDates.find((d) => d.date === selectedDate) && (
                 <span
                   className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                     calendarDates.find((d) => d.date === selectedDate)?.status === 'HOLIDAY'

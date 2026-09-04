@@ -21,19 +21,27 @@ import {
   Layers,
   ArrowRight,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Calendar
 } from 'lucide-react';
+import { OfficerSlotManagement } from '../components/officer/OfficerSlotManagement';
+import { Modal } from '../components/common/Modal';
 
 interface OfficerProfilePageProps {
   onNavigateToDashboard?: () => void;
+  onNavigateToSlots?: () => void;
 }
 
-export const OfficerProfilePage: React.FC<OfficerProfilePageProps> = ({ onNavigateToDashboard }) => {
+export const OfficerProfilePage: React.FC<OfficerProfilePageProps> = ({
+  onNavigateToDashboard,
+  onNavigateToSlots
+}) => {
   const { user, updateUser, logout } = useAuth();
   const { t } = useLanguage();
   const { showToast } = useToast();
 
   const officer = user as Officer;
+  const [isSlotPortalModalOpen, setIsSlotPortalModalOpen] = useState(false);
 
   // Form State
   const [name, setName] = useState(officer?.name || 'M. Rajeshwari');
@@ -149,7 +157,20 @@ export const OfficerProfilePage: React.FC<OfficerProfilePageProps> = ({ onNaviga
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigateToSlots) onNavigateToSlots();
+                else setIsSlotPortalModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-md hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Layers className="w-3.5 h-3.5 text-emerald-200" />
+              <span>1-Hour Slot Schedule Portal</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+
             {onNavigateToDashboard && (
               <button
                 type="button"
@@ -389,6 +410,34 @@ export const OfficerProfilePage: React.FC<OfficerProfilePageProps> = ({ onNaviga
               </div>
             </div>
 
+            {/* One-Hour Slot Schedule Portal Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/50 border-2 border-emerald-300 space-y-2.5 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-km-primary text-white flex items-center justify-center shadow-xs">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <h5 className="font-black text-xs text-km-textPrimary">1-Hour Slot Schedule Portal</h5>
+                  <span className="text-[10px] text-emerald-800 font-bold block">14-Day Calendar & Bay Capacity</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-600 leading-snug">
+                Configure 1-hour windows (4 × 15-min sub-slots), bulk-generate 14-day schedule, lock maintenance bays, and set holiday closures.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNavigateToSlots) onNavigateToSlots();
+                  else setIsSlotPortalModalOpen(true);
+                }}
+                className="w-full py-2.5 rounded-xl bg-km-primary hover:bg-km-primaryDark text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Open Slot Schedule Portal</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {onNavigateToDashboard && (
               <button
                 type="button"
@@ -402,6 +451,19 @@ export const OfficerProfilePage: React.FC<OfficerProfilePageProps> = ({ onNaviga
           </div>
         </div>
       </div>
+
+      {/* 1-Hour Slot Schedule Portal Modal */}
+      {isSlotPortalModalOpen && (
+        <Modal
+          isOpen={isSlotPortalModalOpen}
+          onClose={() => setIsSlotPortalModalOpen(false)}
+          title="1-Hour Smart Slot & Schedule Portal"
+          subtitle="Manage 14-day calendar, 15-minute sub-slot capacities, maintenance locks, and operational statuses"
+          maxWidth="4xl"
+        >
+          <OfficerSlotManagement officer={officer} centerId={centerId} />
+        </Modal>
+      )}
     </div>
   );
 };

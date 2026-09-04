@@ -13,14 +13,31 @@ import { Users, Layers, ShieldAlert, Sliders, Calendar } from 'lucide-react';
 
 interface OfficerHomePageProps {
   onNavigateToProfile?: () => void;
+  initialTab?: 'operations' | 'slots' | 'complaints';
+  onTabChange?: (tab: 'operations' | 'slots' | 'complaints') => void;
 }
 
-export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToProfile }) => {
+export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({
+  onNavigateToProfile,
+  initialTab = 'operations',
+  onTabChange
+}) => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const officer = user as Officer;
 
-  const [activeTab, setActiveTab] = useState<'operations' | 'slots' | 'complaints'>('operations');
+  const [activeTab, setActiveTab] = useState<'operations' | 'slots' | 'complaints'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const handleTabSwitch = (tab: 'operations' | 'slots' | 'complaints') => {
+    setActiveTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [selectedFarmer, setSelectedFarmer] = useState<Booking | null>(null);
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
@@ -73,7 +90,7 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           <button
             type="button"
-            onClick={() => setActiveTab('operations')}
+            onClick={() => handleTabSwitch('operations')}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
               activeTab === 'operations'
                 ? 'bg-km-primary text-white shadow-md'
@@ -86,7 +103,7 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
 
           <button
             type="button"
-            onClick={() => setActiveTab('slots')}
+            onClick={() => handleTabSwitch('slots')}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
               activeTab === 'slots'
                 ? 'bg-km-primary text-white shadow-md'
@@ -99,7 +116,7 @@ export const OfficerHomePage: React.FC<OfficerHomePageProps> = ({ onNavigateToPr
 
           <button
             type="button"
-            onClick={() => setActiveTab('complaints')}
+            onClick={() => handleTabSwitch('complaints')}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
               activeTab === 'complaints'
                 ? 'bg-rose-700 text-white shadow-md'

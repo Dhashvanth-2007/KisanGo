@@ -28,7 +28,7 @@ export const App: React.FC = () => {
   // Navigation and Auth screens
   const [authScreen, setAuthScreen] = useState<'role' | 'farmer_login' | 'officer_login'>('role');
   const [activeTab, setActiveTab] = useState<'home' | 'find-center' | 'my-slot' | 'profile' | 'help'>('home');
-  const [officerTab, setOfficerTab] = useState<'dashboard' | 'profile'>('dashboard');
+  const [officerTab, setOfficerTab] = useState<'dashboard' | 'slots' | 'profile'>('dashboard');
 
   // Modals
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -133,8 +133,8 @@ export const App: React.FC = () => {
 
         {/* Officer Navigation Switcher Bar */}
         <div className="bg-white border-b border-amber-100 shadow-2xs">
-          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setOfficerTab('dashboard')}
@@ -145,6 +145,17 @@ export const App: React.FC = () => {
                 }`}
               >
                 <span>⚡ Live Bay Operations</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOfficerTab('slots')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  officerTab === 'slots'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                <span>📅 1-Hour Slot Schedule</span>
               </button>
               <button
                 type="button"
@@ -166,10 +177,20 @@ export const App: React.FC = () => {
         </div>
 
         <main className="flex-1">
-          {officerTab === 'dashboard' ? (
-            <OfficerHomePage onNavigateToProfile={() => setOfficerTab('profile')} />
+          {officerTab === 'profile' ? (
+            <OfficerProfilePage
+              onNavigateToDashboard={() => setOfficerTab('dashboard')}
+              onNavigateToSlots={() => setOfficerTab('slots')}
+            />
           ) : (
-            <OfficerProfilePage onNavigateToDashboard={() => setOfficerTab('dashboard')} />
+            <OfficerHomePage
+              initialTab={officerTab === 'slots' ? 'slots' : 'operations'}
+              onTabChange={(tab) => {
+                if (tab === 'slots') setOfficerTab('slots');
+                else if (tab === 'operations') setOfficerTab('dashboard');
+              }}
+              onNavigateToProfile={() => setOfficerTab('profile')}
+            />
           )}
         </main>
 
